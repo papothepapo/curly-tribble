@@ -1,0 +1,7 @@
+-keep class com.example.lightime.ime.LightImeService { *; }
+-keep class * extends android.inputmethodservice.InputMethodService { *; }
+-keep class okhttp3.WebSocketListener { *; }
+-keep class okhttp3.OkHttpClient { *; }
+-keep class android.database.sqlite.** { *; }
+-dontwarn org.conscrypt.**
+-dontwarn okhttp3.internal.platform.**

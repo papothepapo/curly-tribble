@@ -1,0 +1,54 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="4dp">
+
+    <TextView
+        android:id="@+id/statusLine"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="12sp"
+        android:textColor="#444"
+        android:text="Ready" />
+
+    <LinearLayout
+        android:id="@+id/suggestionStrip"
+        android:layout_width="match_parent"
+        android:layout_height="40dp"
+        android:orientation="horizontal">
+
+        <Button android:id="@+id/suggestion1" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
+        <Button android:id="@+id/suggestion2" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
+        <Button android:id="@+id/suggestion3" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
+    </LinearLayout>
+
+    <GridLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:columnCount="3">
+
+        <Button android:id="@+id/key1" android:text="1 .,?" style="@style/T9Key" />
+        <Button android:id="@+id/key2" android:text="2 ABC" style="@style/T9Key" />
+        <Button android:id="@+id/key3" android:text="3 DEF" style="@style/T9Key" />
+        <Button android:id="@+id/key4" android:text="4 GHI" style="@style/T9Key" />
+        <Button android:id="@+id/key5" android:text="5 JKL" style="@style/T9Key" />
+        <Button android:id="@+id/key6" android:text="6 MNO" style="@style/T9Key" />
+        <Button android:id="@+id/key7" android:text="7 PQRS" style="@style/T9Key" />
+        <Button android:id="@+id/key8" android:text="8 TUV" style="@style/T9Key" />
+        <Button android:id="@+id/key9" android:text="9 WXYZ" style="@style/T9Key" />
+        <Button android:id="@+id/keyStar" android:text="* Sym" style="@style/T9Key" />
+        <Button android:id="@+id/key0" android:text="0 Space" style="@style/T9Key" />
+        <Button android:id="@+id/keyHash" android:text="# Shift" style="@style/T9Key" />
+    </GridLayout>
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <Button android:id="@+id/keyBackspace" android:text="⌫" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" />
+        <Button android:id="@+id/keyEnter" android:text="↵" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" />
+        <Button android:id="@+id/keyDictation" android:text="🎤 Hold" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" />
+    </LinearLayout>
+</LinearLayout>
