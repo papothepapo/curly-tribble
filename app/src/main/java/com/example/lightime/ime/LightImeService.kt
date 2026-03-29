@@ -46,7 +46,7 @@ class LightImeService : InputMethodService() {
     private var lastTapIndex = 0
     private var lastTapAtMs = 0L
     private val multiTapTimeoutMs = 900L
-    private var inputMode = InputMode.LOWER
+    private var inputMode = InputMode.T9
 
     private var dictationActive = false
     private var dictationSessionId = 0L
@@ -169,7 +169,9 @@ class LightImeService : InputMethodService() {
             }
         }
 
-        root.findViewById<Button>(R.id.keyDictation).setOnTouchListener { _, event ->
+        root.findViewById<Button>(R.id.keyDictation).apply {
+            visibility = if (settings.sttEnabled()) View.VISIBLE else View.GONE
+        }.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> startDictation()
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> stopDictationAndFinalize()
@@ -201,7 +203,7 @@ class LightImeService : InputMethodService() {
             currentInputConnection?.commitText(digit.toString(), 1)
             return
         }
-        if (!settings.predictiveT9Enabled()) {
+        if (inputMode != InputMode.T9) {
             handleMultiTapDigit(digit)
             return
         }
@@ -215,7 +217,7 @@ class LightImeService : InputMethodService() {
             currentInputConnection?.finishComposingText()
             return
         }
-        if (!settings.predictiveT9Enabled()) {
+        if (inputMode != InputMode.T9) {
             currentInputConnection?.setComposingText(displayWithCase(multiTapBuffer.toString()), 1)
             return
         }
@@ -234,7 +236,7 @@ class LightImeService : InputMethodService() {
             suggestionButtons.forEach { it.text = "" }
             return
         }
-        if (!settings.predictiveT9Enabled()) {
+        if (inputMode != InputMode.T9) {
             currentSuggestions = emptyList()
             suggestionButtons.forEach { it.text = "" }
             return
@@ -253,7 +255,7 @@ class LightImeService : InputMethodService() {
 
     private fun currentWord(): String {
         if (inputMode == InputMode.NUMERIC) return ""
-        if (!settings.predictiveT9Enabled()) {
+        if (inputMode != InputMode.T9) {
             return displayWithCase(multiTapBuffer.toString())
         }
         val suggestion = topSuggestion()
@@ -302,7 +304,7 @@ class LightImeService : InputMethodService() {
     }
 
     private fun backspaceSingle() {
-        if (!settings.predictiveT9Enabled() && multiTapBuffer.isNotEmpty()) {
+        if (inputMode != InputMode.T9 && multiTapBuffer.isNotEmpty()) {
             multiTapBuffer.setLength(multiTapBuffer.length - 1)
             showComposingWord()
             return
@@ -323,6 +325,10 @@ class LightImeService : InputMethodService() {
 
     private fun startDictation() {
         if (dictationActive) return
+        if (!settings.sttEnabled()) {
+            showStatus("Speech-to-text disabled")
+            return
+        }
 
         if (!hasRecordAudioPermission()) {
             showStatus("Microphone permission required")
@@ -516,7 +522,11 @@ class LightImeService : InputMethodService() {
     override fun onStartInputView(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         val caps = settings.autoCapEnabled() && info?.inputType?.and(InputType.TYPE_TEXT_FLAG_CAP_SENTENCES) != 0
-        inputMode = if (caps) InputMode.UPPER else InputMode.LOWER
+        inputMode = when {
+            settings.predictiveT9Enabled() -> InputMode.T9
+            caps -> InputMode.UPPER
+            else -> InputMode.LOWER
+        }
         clearCompositionBuffers()
         currentInputConnection?.finishComposingText()
         stopBackspaceRepeat()
@@ -564,6 +574,7 @@ class LightImeService : InputMethodService() {
     private fun handleShortPressKey(keyCode: Int): Boolean {
         when (keyCode) {
             bindingKeyCode(settings.micHardwareKey()) -> {
+                if (!settings.sttEnabled()) return true
                 if (!dictationActive) startDictation() else stopDictationAndFinalize()
                 return true
             }
@@ -650,10 +661,6 @@ class LightImeService : InputMethodService() {
             currentInputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
             return true
         }
-        if (matchesBinding(settings.shiftHardwareKey(), keyCode, longPress = false)) {
-            onHashShortPress()
-            return true
-        }
         if (matchesBinding(settings.symbolHardwareKey(), keyCode, longPress = false)) {
             commitPunctuation(",")
             return true
@@ -662,16 +669,13 @@ class LightImeService : InputMethodService() {
             cycleInputMode()
             return true
         }
-        if (matchesBinding(settings.t9ToggleHardwareKey(), keyCode, longPress = false)) {
-            togglePredictiveT9()
-            return true
-        }
 
         return false
     }
 
     private fun handleLongPressKey(keyCode: Int): Boolean {
         if (matchesBinding(settings.micHardwareKey(), keyCode, longPress = true)) {
+            if (!settings.sttEnabled()) return true
             if (!dictationActive) startDictation() else stopDictationAndFinalize()
             return true
         }
@@ -692,20 +696,12 @@ class LightImeService : InputMethodService() {
             if (inputMode == InputMode.NUMERIC) currentInputConnection?.commitText("1", 1) else commitPunctuation(".")
             return true
         }
-        if (matchesBinding(settings.shiftHardwareKey(), keyCode, longPress = true)) {
-            onHashShortPress()
-            return true
-        }
         if (matchesBinding(settings.symbolHardwareKey(), keyCode, longPress = true)) {
             commitPunctuation(",")
             return true
         }
         if (matchesBinding(settings.modeCycleHardwareKey(), keyCode, longPress = true)) {
             cycleInputMode()
-            return true
-        }
-        if (matchesBinding(settings.t9ToggleHardwareKey(), keyCode, longPress = true)) {
-            togglePredictiveT9()
             return true
         }
         return false
@@ -722,10 +718,8 @@ class LightImeService : InputMethodService() {
             parseBinding(settings.enterHardwareKey(), KeyEvent.KEYCODE_ENTER),
             parseBinding(settings.spaceHardwareKey(), KeyEvent.KEYCODE_0),
             parseBinding(settings.punctuationHardwareKey(), KeyEvent.KEYCODE_1),
-            parseBinding(settings.shiftHardwareKey(), KeyEvent.KEYCODE_POUND),
             parseBinding(settings.symbolHardwareKey(), KeyEvent.KEYCODE_STAR),
-            parseBinding(settings.modeCycleHardwareKey(), KeyEvent.KEYCODE_STAR),
-            parseBinding(settings.t9ToggleHardwareKey(), KeyEvent.KEYCODE_POUND)
+            parseBinding(settings.modeCycleHardwareKey(), KeyEvent.KEYCODE_STAR)
         )
         return bindings.any { it.longPress && it.keyCode == keyCode }
     }
@@ -742,6 +736,7 @@ class LightImeService : InputMethodService() {
     }
 
     private fun bindingKeyCode(value: String, fallback: Int = KeyEvent.KEYCODE_UNKNOWN): Int = when (value) {
+        "NONE" -> KeyEvent.KEYCODE_UNKNOWN
         "KEY_0" -> KeyEvent.KEYCODE_0
         "KEY_1" -> KeyEvent.KEYCODE_1
         "KEY_2" -> KeyEvent.KEYCODE_2
@@ -775,65 +770,35 @@ class LightImeService : InputMethodService() {
     private fun onHashShortPress() {
         inputMode = when (inputMode) {
             InputMode.LOWER -> InputMode.UPPER
-            InputMode.UPPER -> InputMode.LOWER
+            InputMode.UPPER -> InputMode.NUMERIC
             InputMode.NUMERIC -> InputMode.LOWER
+            InputMode.T9 -> InputMode.UPPER
         }
+        clearCompositionBuffers()
         showInputModeStatus()
         showComposingWord()
     }
 
     private fun onHashLongPress() {
-        inputMode = if (inputMode == InputMode.NUMERIC) InputMode.LOWER else InputMode.NUMERIC
-        clearCompositionBuffers()
-        showInputModeStatus()
+        cycleInputMode()
     }
 
     private fun cycleInputMode() {
-        when {
-            settings.predictiveT9Enabled() -> {
-                settings.setPredictiveT9Enabled(false)
-                inputMode = InputMode.UPPER
-                clearCompositionBuffers()
-                showStatus("ABC")
-            }
-            inputMode == InputMode.UPPER -> {
-                inputMode = InputMode.LOWER
-                clearCompositionBuffers()
-                showStatus("abc")
-            }
-            inputMode == InputMode.LOWER -> {
-                inputMode = InputMode.NUMERIC
-                clearCompositionBuffers()
-                showStatus("123")
-            }
-            else -> {
-                settings.setPredictiveT9Enabled(true)
-                inputMode = InputMode.LOWER
-                clearCompositionBuffers()
-                showStatus("T9")
-            }
+        inputMode = when (inputMode) {
+            InputMode.T9 -> InputMode.UPPER
+            InputMode.UPPER -> InputMode.LOWER
+            InputMode.LOWER -> InputMode.NUMERIC
+            InputMode.NUMERIC -> InputMode.T9
         }
-        updateSuggestions()
-        showComposingWord()
-    }
-
-    private fun togglePredictiveT9() {
-        val enabled = !settings.predictiveT9Enabled()
-        settings.setPredictiveT9Enabled(enabled)
         clearCompositionBuffers()
-        if (enabled) {
-            if (inputMode == InputMode.NUMERIC) inputMode = InputMode.LOWER
-            showStatus("Predictive T9 on")
-        } else {
-            if (inputMode == InputMode.NUMERIC) inputMode = InputMode.LOWER
-            showStatus(if (inputMode == InputMode.UPPER) "ABC" else "abc")
-        }
+        showInputModeStatus()
         updateSuggestions()
         showComposingWord()
     }
 
     private fun showInputModeStatus() {
         val modeLabel = when (inputMode) {
+            InputMode.T9 -> "T9"
             InputMode.LOWER -> "abc"
             InputMode.UPPER -> "ABC"
             InputMode.NUMERIC -> "123"
@@ -868,6 +833,7 @@ class LightImeService : InputMethodService() {
     }
 
     private enum class InputMode {
+        T9,
         LOWER,
         UPPER,
         NUMERIC

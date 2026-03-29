@@ -16,6 +16,10 @@
         android:key="dg_api_key"
         android:title="Deepgram API key"
         app:useSimpleSummaryProvider="true" />
+    <SwitchPreferenceCompat
+        android:key="dg_stt_enabled"
+        android:defaultValue="true"
+        android:title="Enable speech-to-text" />
     <EditTextPreference
         android:key="dg_language"
         android:defaultValue="en-US"
@@ -75,12 +79,6 @@
             android:entryValues="@array/hardware_key_values_with_long_press"
             android:title="Period action key" />
         <ListPreference
-            android:key="keymap_shift"
-            android:defaultValue="POUND"
-            android:entries="@array/hardware_key_labels_with_long_press"
-            android:entryValues="@array/hardware_key_values_with_long_press"
-            android:title="Shift (ABC/abc) action key" />
-        <ListPreference
             android:key="keymap_symbol"
             android:defaultValue="STAR"
             android:entries="@array/hardware_key_labels_with_long_press"
@@ -92,12 +90,6 @@
             android:entries="@array/hardware_key_labels_with_long_press"
             android:entryValues="@array/hardware_key_values_with_long_press"
             android:title="Mode cycle key (T9/ABC/abc/123)" />
-        <ListPreference
-            android:key="keymap_t9_toggle"
-            android:defaultValue="LP_POUND"
-            android:entries="@array/hardware_key_labels_with_long_press"
-            android:entryValues="@array/hardware_key_values_with_long_press"
-            android:title="Toggle predictive T9 key" />
     </PreferenceCategory>
     <EditTextPreference
         android:key="dg_keyterms"

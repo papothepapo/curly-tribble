@@ -74,6 +74,7 @@
     </string-array>
 
     <string-array name="hardware_key_labels">
+        <item>None</item>
         <item>0 key</item>
         <item>1 key</item>
         <item>2 key</item>
@@ -100,6 +101,7 @@
     </string-array>
 
     <string-array name="hardware_key_values">
+        <item>NONE</item>
         <item>KEY_0</item>
         <item>KEY_1</item>
         <item>KEY_2</item>
@@ -126,6 +128,7 @@
     </string-array>
 
     <string-array name="hardware_key_labels_with_long_press">
+        <item>None</item>
         <item>0 key</item>
         <item>1 key</item>
         <item>2 key</item>
@@ -175,6 +178,7 @@
     </string-array>
 
     <string-array name="hardware_key_values_with_long_press">
+        <item>NONE</item>
         <item>KEY_0</item>
         <item>KEY_1</item>
         <item>KEY_2</item>
