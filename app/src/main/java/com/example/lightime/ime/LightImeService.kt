@@ -307,7 +307,7 @@ class LightImeService : InputMethodService() {
             listener = object : DeepgramStreamingClient.Listener {
                 override fun onInterim(text: String) {
                     mainHandler.post {
-                        if (!isActiveDictationSession(sessionId)) return@post
+                        if (!canAcceptDictationCallbacks(sessionId)) return@post
                         interimSegment = text
                         if (settings.interimEnabled()) {
                             currentInputConnection?.setComposingText((dictatedFinal.toString() + " " + interimSegment).trim(), 1)
@@ -317,7 +317,7 @@ class LightImeService : InputMethodService() {
 
                 override fun onFinalChunk(text: String, speechFinal: Boolean) {
                     mainHandler.post {
-                        if (!isActiveDictationSession(sessionId)) return@post
+                        if (!canAcceptDictationCallbacks(sessionId)) return@post
                         val normalized = text.trim()
                         if (normalized.isBlank()) return@post
                         if (normalized == lastFinalChunk) return@post
@@ -342,14 +342,14 @@ class LightImeService : InputMethodService() {
 
                 override fun onError(message: String) {
                     mainHandler.post {
-                        if (!isActiveDictationSession(sessionId)) return@post
+                        if (!canAcceptDictationCallbacks(sessionId)) return@post
                         showStatus(message)
                     }
                 }
 
                 override fun onClosed() {
                     mainHandler.post {
-                        if (!isActiveDictationSession(sessionId)) return@post
+                        if (!canAcceptDictationCallbacks(sessionId)) return@post
                         showStatus("Dictation stopped")
                     }
                 }
@@ -358,29 +358,34 @@ class LightImeService : InputMethodService() {
 
         audio.start(object : AudioRecorderManager.Listener {
             override fun onAudioChunk(buffer: ByteArray, size: Int) {
-                if (!isActiveDictationSession(sessionId)) return
+                if (!canAcceptDictationCallbacks(sessionId)) return
                 deepgram.sendAudio(buffer, size)
             }
 
             override fun onError(message: String) {
-                if (!isActiveDictationSession(sessionId)) return
+                if (!canAcceptDictationCallbacks(sessionId)) return
                 showStatus(message)
             }
         })
     }
 
-    private fun isActiveDictationSession(sessionId: Long): Boolean {
-        return dictationActive && sessionId == dictationSessionId
+    private fun isCurrentDictationSession(sessionId: Long): Boolean {
+        return sessionId == dictationSessionId
+    }
+
+    private fun canAcceptDictationCallbacks(sessionId: Long): Boolean {
+        if (!isCurrentDictationSession(sessionId)) return false
+        return dictationActive || pendingFinalizeSessionId == sessionId
     }
 
     private fun stopDictationAndFinalize() {
         if (!dictationActive) return
         val finishingSessionId = dictationSessionId
         dictationActive = false
+        pendingFinalizeSessionId = finishingSessionId
 
         audio.stop()
         deepgram.finalize()
-        pendingFinalizeSessionId = finishingSessionId
 
         mainHandler.postDelayed({
             if (pendingFinalizeSessionId != finishingSessionId) return@postDelayed
