@@ -20,6 +20,12 @@
         android:key="auto_cap"
         android:defaultValue="true"
         android:title="Auto capitalization" />
+    <ListPreference
+        android:key="mic_hardware_key"
+        android:defaultValue="CALL"
+        android:entries="@array/mic_key_labels"
+        android:entryValues="@array/mic_key_values"
+        android:title="Mic hardware button" />
     <EditTextPreference
         android:key="dg_keyterms"
         android:title="Deepgram keyterms (newline separated)"

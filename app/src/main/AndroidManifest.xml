@@ -6,8 +6,9 @@
 
     <application
         android:allowBackup="false"
-        android:icon="@android:drawable/sym_def_app_icon"
+        android:icon="@drawable/ic_app_icon"
         android:label="LightIME"
+        android:roundIcon="@drawable/ic_app_icon"
         android:supportsRtl="false"
         android:theme="@style/Theme.LightIME">
 
@@ -28,7 +29,12 @@
             android:name=".settings.SettingsActivity"
             android:exported="true"
             android:label="LightIME Settings"
-            android:theme="@style/Theme.LightIME" />
+            android:theme="@style/Theme.LightIME">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>

@@ -2,6 +2,7 @@ package com.example.lightime.settings
 
 import android.os.Bundle
 import androidx.preference.EditTextPreference
+import androidx.preference.ListPreference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
 import androidx.preference.SwitchPreferenceCompat
@@ -16,6 +17,7 @@ class SettingsFragment : PreferenceFragmentCompat() {
         findPreference<EditTextPreference>("dg_api_key")?.summaryProvider = EditTextPreference.SimpleSummaryProvider.getInstance()
         findPreference<EditTextPreference>("dg_endpointing")?.summaryProvider = EditTextPreference.SimpleSummaryProvider.getInstance()
         findPreference<EditTextPreference>("dg_language")?.summaryProvider = EditTextPreference.SimpleSummaryProvider.getInstance()
+        findPreference<ListPreference>("mic_hardware_key")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
 
         findPreference<SwitchPreferenceCompat>("dg_interim")?.isChecked = prefs.getBoolean("dg_interim", true)
         findPreference<SwitchPreferenceCompat>("auto_cap")?.isChecked = prefs.getBoolean("auto_cap", true)

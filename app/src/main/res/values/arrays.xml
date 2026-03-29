@@ -1,0 +1,17 @@
+<resources>
+    <string-array name="mic_key_labels">
+        <item>Call button</item>
+        <item>Search button</item>
+        <item>Camera button</item>
+        <item>Volume up</item>
+        <item>Volume down</item>
+    </string-array>
+
+    <string-array name="mic_key_values">
+        <item>CALL</item>
+        <item>SEARCH</item>
+        <item>CAMERA</item>
+        <item>VOLUME_UP</item>
+        <item>VOLUME_DOWN</item>
+    </string-array>
+</resources>
