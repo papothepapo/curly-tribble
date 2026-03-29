@@ -53,26 +53,26 @@
         <ListPreference
             android:key="keymap_backspace"
             android:defaultValue="DEL"
-            android:entries="@array/keymap_key_labels"
-            android:entryValues="@array/keymap_key_values"
+            android:entries="@array/keymap_key_labels_with_long_press"
+            android:entryValues="@array/keymap_key_values_with_long_press"
             android:title="Backspace action key" />
         <ListPreference
             android:key="keymap_enter"
             android:defaultValue="ENTER"
-            android:entries="@array/keymap_key_labels"
-            android:entryValues="@array/keymap_key_values"
+            android:entries="@array/keymap_key_labels_with_long_press"
+            android:entryValues="@array/keymap_key_values_with_long_press"
             android:title="Enter action key" />
         <ListPreference
             android:key="keymap_space"
             android:defaultValue="KEY_0"
-            android:entries="@array/keymap_key_labels"
-            android:entryValues="@array/keymap_key_values"
+            android:entries="@array/keymap_key_labels_with_long_press"
+            android:entryValues="@array/keymap_key_values_with_long_press"
             android:title="Space / commit action key" />
         <ListPreference
             android:key="keymap_period"
             android:defaultValue="KEY_1"
-            android:entries="@array/keymap_key_labels"
-            android:entryValues="@array/keymap_key_values"
+            android:entries="@array/keymap_key_labels_with_long_press"
+            android:entryValues="@array/keymap_key_values_with_long_press"
             android:title="Period action key" />
         <ListPreference
             android:key="keymap_shift"
@@ -83,8 +83,8 @@
         <ListPreference
             android:key="keymap_symbol"
             android:defaultValue="STAR"
-            android:entries="@array/keymap_key_labels"
-            android:entryValues="@array/keymap_key_values"
+            android:entries="@array/keymap_key_labels_with_long_press"
+            android:entryValues="@array/keymap_key_values_with_long_press"
             android:title="Comma/symbol action key" />
     </PreferenceCategory>
     <EditTextPreference

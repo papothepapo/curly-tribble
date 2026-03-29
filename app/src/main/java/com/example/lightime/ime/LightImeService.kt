@@ -536,7 +536,7 @@ class LightImeService : InputMethodService() {
                 if (!dictationActive) startDictation() else stopDictationAndFinalize()
                 return true
             }
-            spaceHardwareKeyCode(), KeyEvent.KEYCODE_NUMPAD_0 -> {
+            KeyEvent.KEYCODE_NUMPAD_0 -> {
                 if (inputMode == InputMode.NUMERIC) {
                     currentInputConnection?.commitText("0", 1)
                 } else {
@@ -544,7 +544,7 @@ class LightImeService : InputMethodService() {
                 }
                 return true
             }
-            punctuationHardwareKeyCode(), KeyEvent.KEYCODE_NUMPAD_1 -> {
+            KeyEvent.KEYCODE_NUMPAD_1 -> {
                 if (inputMode == InputMode.NUMERIC) {
                     currentInputConnection?.commitText("1", 1)
                 } else {
@@ -592,29 +592,47 @@ class LightImeService : InputMethodService() {
                 onDigitKey('9', "wxyz")
                 return true
             }
-            backspaceHardwareKeyCode() -> {
-                backspaceSingle()
-                return true
+        }
+
+        if (keyCode == spaceHardwareKeyCode()) {
+            if (inputMode == InputMode.NUMERIC) {
+                currentInputConnection?.commitText("0", 1)
+            } else {
+                commitWord(currentWord())
             }
-            enterHardwareKeyCode() -> {
-                commitComposingWordIfAny()
-                currentInputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
-                return true
+            return true
+        }
+        if (keyCode == punctuationHardwareKeyCode()) {
+            if (inputMode == InputMode.NUMERIC) {
+                currentInputConnection?.commitText("1", 1)
+            } else {
+                commitPunctuation(".")
             }
-            shiftHardwareKeyCode() -> {
-                onHashShortPress()
-                return true
-            }
-            symbolHardwareKeyCode() -> {
-                commitPunctuation(",")
-                return true
-            }
+            return true
+        }
+        if (keyCode == backspaceHardwareKeyCode()) {
+            backspaceSingle()
+            return true
+        }
+        if (keyCode == enterHardwareKeyCode()) {
+            commitComposingWordIfAny()
+            currentInputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+            return true
+        }
+        if (keyCode == shiftHardwareKeyCode()) {
+            onHashShortPress()
+            return true
+        }
+        if (keyCode == symbolHardwareKeyCode()) {
+            commitPunctuation(",")
+            return true
         }
         return super.onKeyDown(keyCode, event)
     }
 
     override fun onKeyLongPress(keyCode: Int, event: KeyEvent?): Boolean {
         if (keyCode == shiftHardwareKeyCode()) {
+            if (handleShiftLongPressRemap()) return true
             onHashLongPress()
             return true
         }
@@ -646,6 +664,7 @@ class LightImeService : InputMethodService() {
     private fun symbolHardwareKeyCode(): Int = keyCodeFromSetting(settings.symbolHardwareKey(), KeyEvent.KEYCODE_STAR)
 
     private fun keyCodeFromSetting(value: String, fallback: Int): Int = when (value) {
+        "SHIFT_LONG_PRESS" -> KeyEvent.KEYCODE_UNKNOWN
         "KEY_0" -> KeyEvent.KEYCODE_0
         "KEY_1" -> KeyEvent.KEYCODE_1
         "STAR" -> KeyEvent.KEYCODE_STAR
@@ -658,6 +677,41 @@ class LightImeService : InputMethodService() {
         "ENTER" -> KeyEvent.KEYCODE_ENTER
         "SPACE" -> KeyEvent.KEYCODE_SPACE
         else -> fallback
+    }
+
+    private fun isShiftLongPressMapped(value: String): Boolean = value == "SHIFT_LONG_PRESS"
+
+    private fun handleShiftLongPressRemap(): Boolean {
+        if (isShiftLongPressMapped(settings.backspaceHardwareKey())) {
+            backspaceSingle()
+            return true
+        }
+        if (isShiftLongPressMapped(settings.enterHardwareKey())) {
+            commitComposingWordIfAny()
+            currentInputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+            return true
+        }
+        if (isShiftLongPressMapped(settings.spaceHardwareKey())) {
+            if (inputMode == InputMode.NUMERIC) {
+                currentInputConnection?.commitText("0", 1)
+            } else {
+                commitWord(currentWord())
+            }
+            return true
+        }
+        if (isShiftLongPressMapped(settings.punctuationHardwareKey())) {
+            if (inputMode == InputMode.NUMERIC) {
+                currentInputConnection?.commitText("1", 1)
+            } else {
+                commitPunctuation(".")
+            }
+            return true
+        }
+        if (isShiftLongPressMapped(settings.symbolHardwareKey())) {
+            commitPunctuation(",")
+            return true
+        }
+        return false
     }
 
     private fun hasRecordAudioPermission(): Boolean {

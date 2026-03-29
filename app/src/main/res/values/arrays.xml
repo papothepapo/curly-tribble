@@ -42,4 +42,34 @@
         <item>ENTER</item>
         <item>SPACE</item>
     </string-array>
+
+    <string-array name="keymap_key_labels_with_long_press">
+        <item>0 key</item>
+        <item>1 key</item>
+        <item>* key</item>
+        <item># key</item>
+        <item>D-pad center</item>
+        <item>Call key</item>
+        <item>End call key</item>
+        <item>Delete / Backspace</item>
+        <item>Clear key</item>
+        <item>Enter key</item>
+        <item>Space key</item>
+        <item>Long press Shift key</item>
+    </string-array>
+
+    <string-array name="keymap_key_values_with_long_press">
+        <item>KEY_0</item>
+        <item>KEY_1</item>
+        <item>STAR</item>
+        <item>POUND</item>
+        <item>DPAD_CENTER</item>
+        <item>CALL</item>
+        <item>ENDCALL</item>
+        <item>DEL</item>
+        <item>CLEAR</item>
+        <item>ENTER</item>
+        <item>SPACE</item>
+        <item>SHIFT_LONG_PRESS</item>
+    </string-array>
 </resources>
