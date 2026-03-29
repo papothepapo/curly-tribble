@@ -26,11 +26,10 @@ class SettingsFragment : PreferenceFragmentCompat() {
         findPreference<ListPreference>("keymap_enter")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
         findPreference<ListPreference>("keymap_space")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
         findPreference<ListPreference>("keymap_period")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
-        findPreference<ListPreference>("keymap_shift")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
         findPreference<ListPreference>("keymap_symbol")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
         findPreference<ListPreference>("keymap_mode_cycle")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
-        findPreference<ListPreference>("keymap_t9_toggle")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
 
+        findPreference<SwitchPreferenceCompat>("dg_stt_enabled")?.isChecked = prefs.getBoolean("dg_stt_enabled", true)
         findPreference<SwitchPreferenceCompat>("dg_interim")?.isChecked = prefs.getBoolean("dg_interim", true)
         findPreference<SwitchPreferenceCompat>("auto_cap")?.isChecked = prefs.getBoolean("auto_cap", true)
         findPreference<SwitchPreferenceCompat>("t9_predictive")?.isChecked = prefs.getBoolean("t9_predictive", true)

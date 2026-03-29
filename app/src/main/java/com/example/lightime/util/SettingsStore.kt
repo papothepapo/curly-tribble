@@ -8,6 +8,7 @@ class SettingsStore(context: Context) {
     private val prefs: SharedPreferences = PreferenceManager.getDefaultSharedPreferences(context)
 
     fun apiKey(): String = prefs.getString("dg_api_key", "") ?: ""
+    fun sttEnabled(): Boolean = prefs.getBoolean("dg_stt_enabled", true)
     fun language(): String = prefs.getString("dg_language", "en-US") ?: "en-US"
     fun endpointingMs(): Int = (prefs.getString("dg_endpointing", "300") ?: "300").toIntOrNull() ?: 300
     fun interimEnabled(): Boolean = prefs.getBoolean("dg_interim", true)
@@ -22,10 +23,8 @@ class SettingsStore(context: Context) {
     fun enterHardwareKey(): String = prefs.getString("keymap_enter", "ENTER") ?: "ENTER"
     fun spaceHardwareKey(): String = prefs.getString("keymap_space", "KEY_0") ?: "KEY_0"
     fun punctuationHardwareKey(): String = prefs.getString("keymap_period", "KEY_1") ?: "KEY_1"
-    fun shiftHardwareKey(): String = prefs.getString("keymap_shift", "POUND") ?: "POUND"
     fun symbolHardwareKey(): String = prefs.getString("keymap_symbol", "STAR") ?: "STAR"
     fun modeCycleHardwareKey(): String = prefs.getString("keymap_mode_cycle", "LP_STAR") ?: "LP_STAR"
-    fun t9ToggleHardwareKey(): String = prefs.getString("keymap_t9_toggle", "LP_POUND") ?: "LP_POUND"
 
     fun keyterms(): List<String> = decodeList(prefs.getString("dg_keyterms", "") ?: "")
     fun correctionsMap(): Map<String, String> = decodeMap(prefs.getString("text_corrections", "") ?: "")
