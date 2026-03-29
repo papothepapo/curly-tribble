@@ -27,6 +27,7 @@ class LightImeService : InputMethodService() {
 
     private lateinit var statusLine: TextView
     private lateinit var suggestionButtons: List<Button>
+    private var hasTouchscreen: Boolean = true
 
     private val digitBuffer = StringBuilder()
     private var upper = false
@@ -51,6 +52,7 @@ class LightImeService : InputMethodService() {
     override fun onCreateInputView(): View {
         val root = LayoutInflater.from(this).inflate(R.layout.ime_view, null)
         statusLine = root.findViewById(R.id.statusLine)
+        hasTouchscreen = packageManager.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN)
 
         suggestionButtons = listOf(
             root.findViewById(R.id.suggestion1),
@@ -79,7 +81,9 @@ class LightImeService : InputMethodService() {
             startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
 
-        if (!packageManager.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN)) {
+        if (hasTouchscreen) {
+            applyTouchscreenKeyLabels(root)
+        } else {
             root.findViewById<View>(R.id.t9Grid).visibility = View.GONE
             root.findViewById<View>(R.id.actionRow).visibility = View.GONE
             showStatus("Use hardware keypad for T9 • predictions above")
@@ -111,6 +115,17 @@ class LightImeService : InputMethodService() {
         root.findViewById<Button>(id).setOnClickListener { onDigitKey(digit, chars) }
     }
 
+    private fun applyTouchscreenKeyLabels(root: View) {
+        root.findViewById<Button>(R.id.key2).text = "2 abc"
+        root.findViewById<Button>(R.id.key3).text = "3 def"
+        root.findViewById<Button>(R.id.key4).text = "4 ghi"
+        root.findViewById<Button>(R.id.key5).text = "5 jkl"
+        root.findViewById<Button>(R.id.key6).text = "6 mno"
+        root.findViewById<Button>(R.id.key7).text = "7 pqrs"
+        root.findViewById<Button>(R.id.key8).text = "8 tuv"
+        root.findViewById<Button>(R.id.key9).text = "9 wxyz"
+    }
+
     private fun onDigitKey(digit: Char, _chars: String) {
         digitBuffer.append(digit)
         showComposingWord()
@@ -120,7 +135,11 @@ class LightImeService : InputMethodService() {
     private fun showComposingWord() {
         val suggestion = topSuggestion()
         if (suggestion.isBlank()) {
-            currentInputConnection.setComposingText(digitBuffer.toString(), 1)
+            if (hasTouchscreen) {
+                currentInputConnection.setComposingText(digitBuffer.toString(), 1)
+            } else {
+                currentInputConnection.setComposingText("", 1)
+            }
             return
         }
         val displayed = if (upper && suggestion.isNotBlank()) {
@@ -151,7 +170,6 @@ class LightImeService : InputMethodService() {
             currentInputConnection.commitText(" ", 1)
             return
         }
-        currentInputConnection.finishComposingText()
         currentInputConnection.commitText("$word ", 1)
         dbHelper.upsertUserWord(word.lowercase())
         digitBuffer.setLength(0)
