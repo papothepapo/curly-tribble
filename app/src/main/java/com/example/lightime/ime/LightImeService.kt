@@ -1,5 +1,6 @@
 package com.example.lightime.ime
 
+import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.inputmethodservice.InputMethodService
@@ -21,6 +22,7 @@ import com.example.lightime.stt.AudioRecorderManager
 import com.example.lightime.stt.DeepgramStreamingClient
 import com.example.lightime.t9.T9Engine
 import com.example.lightime.util.SettingsStore
+import androidx.core.content.ContextCompat
 
 class LightImeService : InputMethodService() {
     private lateinit var settings: SettingsStore
@@ -272,6 +274,13 @@ class LightImeService : InputMethodService() {
 
     private fun startDictation() {
         if (dictationActive) return
+
+        if (!hasRecordAudioPermission()) {
+            showStatus("Microphone permission required")
+            Toast.makeText(this, "Grant microphone permission in Settings", Toast.LENGTH_SHORT).show()
+            startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+            return
+        }
 
         val apiKey = settings.apiKey()
         if (apiKey.isBlank()) {
@@ -537,6 +546,10 @@ class LightImeService : InputMethodService() {
         "VOLUME_UP" -> KeyEvent.KEYCODE_VOLUME_UP
         "VOLUME_DOWN" -> KeyEvent.KEYCODE_VOLUME_DOWN
         else -> KeyEvent.KEYCODE_CALL
+    }
+
+    private fun hasRecordAudioPermission(): Boolean {
+        return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
     }
 
     companion object {
