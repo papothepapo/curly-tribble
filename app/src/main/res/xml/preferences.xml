@@ -36,6 +36,11 @@
         android:key="t9_predictive"
         android:defaultValue="true"
         android:title="Predictive T9 suggestions" />
+    <SwitchPreferenceCompat
+        android:key="force_hide_onscreen_t9_keypad"
+        android:defaultValue="false"
+        android:title="Force hide on-screen T9 keypad"
+        android:summary="Hide the touch T9 keypad and action row even on touchscreen devices" />
     <ListPreference
         android:key="mic_hardware_key"
         android:defaultValue="CALL"

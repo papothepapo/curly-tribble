@@ -32,6 +32,8 @@ class SettingsFragment : PreferenceFragmentCompat() {
         findPreference<SwitchPreferenceCompat>("dg_interim")?.isChecked = prefs.getBoolean("dg_interim", true)
         findPreference<SwitchPreferenceCompat>("auto_cap")?.isChecked = prefs.getBoolean("auto_cap", true)
         findPreference<SwitchPreferenceCompat>("t9_predictive")?.isChecked = prefs.getBoolean("t9_predictive", true)
+        findPreference<SwitchPreferenceCompat>("force_hide_onscreen_t9_keypad")?.isChecked =
+            prefs.getBoolean("force_hide_onscreen_t9_keypad", false)
 
         findPreference<Preference>("open_ime_settings")?.setOnPreferenceClickListener {
             startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))

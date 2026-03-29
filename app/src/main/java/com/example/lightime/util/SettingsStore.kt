@@ -14,6 +14,7 @@ class SettingsStore(context: Context) {
     fun autoCapEnabled(): Boolean = prefs.getBoolean("auto_cap", true)
     fun micHardwareKey(): String = prefs.getString("mic_hardware_key", "CALL") ?: "CALL"
     fun predictiveT9Enabled(): Boolean = prefs.getBoolean("t9_predictive", true)
+    fun forceHideOnscreenT9Keypad(): Boolean = prefs.getBoolean("force_hide_onscreen_t9_keypad", false)
     fun backspaceHardwareKey(): String = prefs.getString("keymap_backspace", "DEL") ?: "DEL"
     fun enterHardwareKey(): String = prefs.getString("keymap_enter", "ENTER") ?: "ENTER"
     fun spaceHardwareKey(): String = prefs.getString("keymap_space", "KEY_0") ?: "KEY_0"

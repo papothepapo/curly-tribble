@@ -34,6 +34,7 @@ class LightImeService : InputMethodService() {
     private var suggestionButtons: List<Button> = emptyList()
     private var currentSuggestions: List<String> = emptyList()
     private var hasTouchscreen: Boolean = true
+    private var showOnscreenT9Keypad: Boolean = true
 
     private val digitBuffer = StringBuilder()
     private val multiTapBuffer = StringBuilder()
@@ -112,7 +113,8 @@ class LightImeService : InputMethodService() {
             startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
 
-        if (hasTouchscreen) {
+        showOnscreenT9Keypad = hasTouchscreen && !settings.forceHideOnscreenT9Keypad()
+        if (showOnscreenT9Keypad) {
             applyTouchscreenKeyLabels(root)
         } else {
             root.findViewById<View>(R.id.t9Grid).visibility = View.GONE
@@ -193,7 +195,7 @@ class LightImeService : InputMethodService() {
         val suggestion = topSuggestion()
         val displayText = when {
             suggestion.isNotBlank() -> displayWithCase(suggestion)
-            hasTouchscreen -> digitBuffer.toString()
+            showOnscreenT9Keypad -> digitBuffer.toString()
             else -> ""
         }
         currentInputConnection?.setComposingText(displayText, 1)
