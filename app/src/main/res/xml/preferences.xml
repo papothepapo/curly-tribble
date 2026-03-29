@@ -1,5 +1,17 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
+    <PreferenceCategory
+        android:title="Keyboard setup">
+        <Preference
+            android:key="open_ime_settings"
+            android:title="Enable LightIME in Android Settings"
+            android:summary="Opens Android's keyboard settings screen" />
+        <Preference
+            android:key="show_input_picker"
+            android:title="Switch keyboard now"
+            android:summary="Shows the Android keyboard picker" />
+    </PreferenceCategory>
+
     <EditTextPreference
         android:key="dg_api_key"
         android:title="Deepgram API key"

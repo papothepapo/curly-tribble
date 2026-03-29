@@ -23,11 +23,12 @@ import com.example.lightime.stt.DeepgramStreamingClient
 import com.example.lightime.t9.T9Engine
 import com.example.lightime.util.SettingsStore
 import androidx.core.content.ContextCompat
+import java.util.concurrent.Executors
 
 class LightImeService : InputMethodService() {
     private lateinit var settings: SettingsStore
     private lateinit var dbHelper: DictionaryDbHelper
-    private lateinit var t9Engine: T9Engine
+    private var t9Engine: T9Engine? = null
 
     private lateinit var statusLine: TextView
     private lateinit var suggestionButtons: List<Button>
@@ -53,6 +54,7 @@ class LightImeService : InputMethodService() {
     private var interimSegment = ""
     private var lastFinalChunk = ""
     private var pendingFinalizeSessionId: Long? = null
+    private val backgroundExecutor = Executors.newSingleThreadExecutor()
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var backspaceRepeating = false
@@ -68,8 +70,14 @@ class LightImeService : InputMethodService() {
         super.onCreate()
         settings = SettingsStore(applicationContext)
         dbHelper = DictionaryDbHelper(applicationContext)
-        dbHelper.ensureSeedLoaded()
-        t9Engine = T9Engine(dbHelper.readableDatabase)
+        backgroundExecutor.execute {
+            dbHelper.ensureSeedLoaded()
+            t9Engine = T9Engine(dbHelper.readableDatabase)
+            mainHandler.post {
+                updateSuggestions()
+                showComposingWord()
+            }
+        }
     }
 
     override fun onCreateInputView(): View {
@@ -197,7 +205,13 @@ class LightImeService : InputMethodService() {
             suggestionButtons.forEach { it.text = "" }
             return
         }
-        currentSuggestions = t9Engine.suggestions(digitBuffer.toString(), 3)
+        val engine = t9Engine
+        if (engine == null) {
+            currentSuggestions = emptyList()
+            suggestionButtons.forEach { it.text = "" }
+            return
+        }
+        currentSuggestions = engine.suggestions(digitBuffer.toString(), 3)
         suggestionButtons.forEachIndexed { idx, button -> button.text = currentSuggestions.getOrElse(idx) { "" } }
     }
 
@@ -322,10 +336,7 @@ class LightImeService : InputMethodService() {
                         if (normalized.isBlank()) return@post
                         if (normalized == lastFinalChunk) return@post
 
-                        val appendSegment = when {
-                            lastFinalChunk.isNotBlank() && normalized.startsWith(lastFinalChunk) -> normalized.removePrefix(lastFinalChunk).trim()
-                            else -> normalized
-                        }
+                        val appendSegment = suffixDelta(lastFinalChunk, normalized)
                         if (appendSegment.isBlank()) {
                             lastFinalChunk = normalized
                             return@post
@@ -396,11 +407,12 @@ class LightImeService : InputMethodService() {
     }
 
     private fun commitDictationResult() {
+        val interimTail = suffixDelta(dictatedFinal.toString().trim(), interimSegment.trim())
         val finalText = buildString {
             append(dictatedFinal.toString().trim())
-            if (interimSegment.isNotBlank()) {
+            if (interimTail.isNotBlank()) {
                 if (isNotBlank()) append(' ')
-                append(interimSegment.trim())
+                append(interimTail)
             }
         }
         val processed = postProcessor.process(
@@ -481,6 +493,11 @@ class LightImeService : InputMethodService() {
         super.onFinishInputView(finishingInput)
     }
 
+    override fun onDestroy() {
+        backgroundExecutor.shutdownNow()
+        super.onDestroy()
+    }
+
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         when (keyCode) {
             micHardwareKeyCode() -> {
@@ -555,6 +572,26 @@ class LightImeService : InputMethodService() {
 
     private fun hasRecordAudioPermission(): Boolean {
         return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun suffixDelta(previous: String, current: String): String {
+        if (current.isBlank()) return ""
+        if (previous.isBlank()) return current
+        if (current.startsWith(previous)) return current.removePrefix(previous).trim()
+
+        val prevWords = previous.split(Regex("\\s+")).filter { it.isNotBlank() }
+        val currWords = current.split(Regex("\\s+")).filter { it.isNotBlank() }
+        if (currWords.isEmpty()) return ""
+
+        val maxOverlap = minOf(prevWords.size, currWords.size)
+        for (overlap in maxOverlap downTo 1) {
+            val prevSuffix = prevWords.takeLast(overlap)
+            val currPrefix = currWords.take(overlap)
+            if (prevSuffix == currPrefix) {
+                return currWords.drop(overlap).joinToString(" ")
+            }
+        }
+        return current
     }
 
     companion object {

@@ -1,8 +1,12 @@
 package com.example.lightime.settings
 
 import android.os.Bundle
+import android.content.Intent
+import android.provider.Settings
+import android.view.inputmethod.InputMethodManager
 import androidx.preference.EditTextPreference
 import androidx.preference.ListPreference
+import androidx.preference.Preference
 import androidx.preference.PreferenceFragmentCompat
 import androidx.preference.PreferenceManager
 import androidx.preference.SwitchPreferenceCompat
@@ -22,5 +26,15 @@ class SettingsFragment : PreferenceFragmentCompat() {
         findPreference<SwitchPreferenceCompat>("dg_interim")?.isChecked = prefs.getBoolean("dg_interim", true)
         findPreference<SwitchPreferenceCompat>("auto_cap")?.isChecked = prefs.getBoolean("auto_cap", true)
         findPreference<SwitchPreferenceCompat>("t9_predictive")?.isChecked = prefs.getBoolean("t9_predictive", true)
+
+        findPreference<Preference>("open_ime_settings")?.setOnPreferenceClickListener {
+            startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
+            true
+        }
+        findPreference<Preference>("show_input_picker")?.setOnPreferenceClickListener {
+            val imm = requireContext().getSystemService(InputMethodManager::class.java)
+            imm?.showInputMethodPicker()
+            true
+        }
     }
 }
