@@ -1,8 +1,9 @@
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
     <EditTextPreference
         android:key="dg_api_key"
         android:title="Deepgram API key"
-        android:useSimpleSummaryProvider="true" />
+        app:useSimpleSummaryProvider="true" />
     <EditTextPreference
         android:key="dg_language"
         android:defaultValue="en-US"
