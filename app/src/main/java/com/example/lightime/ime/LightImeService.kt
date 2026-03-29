@@ -50,6 +50,17 @@ class LightImeService : InputMethodService() {
     private val dictatedFinal = StringBuilder()
     private var interimSegment = ""
     private var lastFinalChunk = ""
+    private var pendingFinalizeSessionId: Long? = null
+
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var backspaceRepeating = false
+    private val repeatingDeleteRunnable = object : Runnable {
+        override fun run() {
+            if (!backspaceRepeating) return
+            backspaceSingle()
+            mainHandler.postDelayed(this, BACKSPACE_REPEAT_INTERVAL_MS)
+        }
+    }
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var backspaceRepeating = false
@@ -284,7 +295,9 @@ class LightImeService : InputMethodService() {
         dictatedFinal.setLength(0)
         interimSegment = ""
         lastFinalChunk = ""
+        pendingFinalizeSessionId = null
         val sessionId = ++dictationSessionId
+        dictationActive = true
         showStatus("Listening…")
 
         deepgram.connect(
@@ -347,7 +360,10 @@ class LightImeService : InputMethodService() {
                 showStatus(message)
             }
         })
-        dictationActive = true
+    }
+
+    private fun isActiveDictationSession(sessionId: Long): Boolean {
+        return sessionId == dictationSessionId
     }
 
     private fun isActiveDictationSession(sessionId: Long): Boolean {
@@ -361,7 +377,16 @@ class LightImeService : InputMethodService() {
 
         audio.stop()
         deepgram.finalizeAndClose()
+        pendingFinalizeSessionId = finishingSessionId
 
+        mainHandler.postDelayed({
+            if (pendingFinalizeSessionId != finishingSessionId) return@postDelayed
+            pendingFinalizeSessionId = null
+            commitDictationResult()
+        }, DICTATION_FINALIZE_GRACE_MS)
+    }
+
+    private fun commitDictationResult() {
         val finalText = buildString {
             append(dictatedFinal.toString().trim())
             if (interimSegment.isNotBlank()) {
@@ -382,9 +407,6 @@ class LightImeService : InputMethodService() {
         interimSegment = ""
         lastFinalChunk = ""
         showStatus("Ready")
-
-        // Ignore delayed events from the socket that is currently closing.
-        if (dictationSessionId == finishingSessionId) dictationSessionId++
     }
 
     private fun showStatus(msg: String) {
@@ -446,6 +468,7 @@ class LightImeService : InputMethodService() {
     override fun onFinishInputView(finishingInput: Boolean) {
         stopBackspaceRepeat()
         stopDictationAndFinalize()
+        pendingFinalizeSessionId = null
         super.onFinishInputView(finishingInput)
     }
 
@@ -524,5 +547,6 @@ class LightImeService : InputMethodService() {
     companion object {
         private const val BACKSPACE_INITIAL_REPEAT_DELAY_MS = 350L
         private const val BACKSPACE_REPEAT_INTERVAL_MS = 60L
+        private const val DICTATION_FINALIZE_GRACE_MS = 180L
     }
 }
