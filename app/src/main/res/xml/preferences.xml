@@ -20,6 +20,10 @@
         android:key="auto_cap"
         android:defaultValue="true"
         android:title="Auto capitalization" />
+    <SwitchPreferenceCompat
+        android:key="t9_predictive"
+        android:defaultValue="true"
+        android:title="Predictive T9 suggestions" />
     <ListPreference
         android:key="mic_hardware_key"
         android:defaultValue="CALL"

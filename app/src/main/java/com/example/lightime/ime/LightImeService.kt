@@ -30,6 +30,11 @@ class LightImeService : InputMethodService() {
     private var hasTouchscreen: Boolean = true
 
     private val digitBuffer = StringBuilder()
+    private val multiTapBuffer = StringBuilder()
+    private var lastTapDigit: Char? = null
+    private var lastTapIndex = 0
+    private var lastTapAtMs = 0L
+    private val multiTapTimeoutMs = 900L
     private var upper = false
 
     private var dictationActive = false
@@ -40,6 +45,7 @@ class LightImeService : InputMethodService() {
 
     private val dictatedFinal = StringBuilder()
     private var interimSegment = ""
+    private var lastFinalChunk = ""
 
     override fun onCreate() {
         super.onCreate()
@@ -127,12 +133,21 @@ class LightImeService : InputMethodService() {
     }
 
     private fun onDigitKey(digit: Char, _chars: String) {
+        if (!settings.predictiveT9Enabled()) {
+            handleMultiTapDigit(digit)
+            return
+        }
         digitBuffer.append(digit)
         showComposingWord()
         updateSuggestions()
     }
 
     private fun showComposingWord() {
+        if (!settings.predictiveT9Enabled()) {
+            val text = displayWithCase(multiTapBuffer.toString())
+            currentInputConnection.setComposingText(text, 1)
+            return
+        }
         val suggestion = topSuggestion()
         if (suggestion.isBlank()) {
             if (hasTouchscreen) {
@@ -151,6 +166,10 @@ class LightImeService : InputMethodService() {
     }
 
     private fun updateSuggestions() {
+        if (!settings.predictiveT9Enabled()) {
+            suggestionButtons.forEach { it.text = "" }
+            return
+        }
         val suggestions = t9Engine.suggestions(digitBuffer.toString(), 3)
         suggestionButtons.forEachIndexed { idx, button -> button.text = suggestions.getOrElse(idx) { "" } }
     }
@@ -158,6 +177,9 @@ class LightImeService : InputMethodService() {
     private fun topSuggestion(): String = suggestionButtons.firstOrNull { it.text.isNotBlank() }?.text?.toString().orEmpty()
 
     private fun currentWord(): String {
+        if (!settings.predictiveT9Enabled()) {
+            return displayWithCase(multiTapBuffer.toString())
+        }
         val suggestion = topSuggestion()
         if (suggestion.isNotBlank()) {
             return if (upper) suggestion.replaceFirstChar { it.uppercaseChar() } else suggestion
@@ -173,11 +195,18 @@ class LightImeService : InputMethodService() {
         currentInputConnection.commitText("$word ", 1)
         dbHelper.upsertUserWord(word.lowercase())
         digitBuffer.setLength(0)
+        multiTapBuffer.setLength(0)
+        clearMultiTapState()
         updateSuggestions()
         currentInputConnection.finishComposingText()
     }
 
     private fun backspaceSingle() {
+        if (!settings.predictiveT9Enabled() && multiTapBuffer.isNotEmpty()) {
+            multiTapBuffer.setLength(multiTapBuffer.length - 1)
+            showComposingWord()
+            return
+        }
         if (digitBuffer.isNotEmpty()) {
             if (digitBuffer.isNotEmpty()) digitBuffer.setLength(digitBuffer.length - 1)
             showComposingWord()
@@ -190,6 +219,8 @@ class LightImeService : InputMethodService() {
     private fun deleteWord() {
         currentInputConnection.deleteSurroundingText(20, 0)
         digitBuffer.setLength(0)
+        multiTapBuffer.setLength(0)
+        clearMultiTapState()
         currentInputConnection.finishComposingText()
         updateSuggestions()
     }
@@ -204,6 +235,7 @@ class LightImeService : InputMethodService() {
 
         dictatedFinal.setLength(0)
         interimSegment = ""
+        lastFinalChunk = ""
         showStatus("Listening…")
 
         deepgram.connect(
@@ -220,9 +252,24 @@ class LightImeService : InputMethodService() {
                 }
 
                 override fun onFinalChunk(text: String, speechFinal: Boolean) {
+                    val normalized = text.trim()
+                    if (normalized.isBlank()) return
+                    if (normalized == lastFinalChunk) return
+
+                    val appendSegment = when {
+                        lastFinalChunk.isNotBlank() && normalized.startsWith(lastFinalChunk) ->
+                            normalized.removePrefix(lastFinalChunk).trim()
+                        else -> normalized
+                    }
+                    if (appendSegment.isBlank()) {
+                        lastFinalChunk = normalized
+                        return
+                    }
+
                     if (dictatedFinal.isNotEmpty()) dictatedFinal.append(' ')
-                    dictatedFinal.append(text.trim())
+                    dictatedFinal.append(appendSegment)
                     interimSegment = ""
+                    lastFinalChunk = normalized
                     currentInputConnection.setComposingText(dictatedFinal.toString(), 1)
                     if (speechFinal) dictatedFinal.append(' ')
                 }
@@ -277,10 +324,57 @@ class LightImeService : InputMethodService() {
         statusLine.post { statusLine.text = msg }
     }
 
+    private fun handleMultiTapDigit(digit: Char) {
+        val now = System.currentTimeMillis()
+        val chars = charsForDigit(digit)
+        if (chars.isEmpty()) return
+
+        val sameKey = lastTapDigit == digit && now - lastTapAtMs <= multiTapTimeoutMs && multiTapBuffer.isNotEmpty()
+        if (sameKey) {
+            lastTapIndex = (lastTapIndex + 1) % chars.length
+            multiTapBuffer.setCharAt(multiTapBuffer.length - 1, chars[lastTapIndex])
+        } else {
+            lastTapDigit = digit
+            lastTapIndex = 0
+            multiTapBuffer.append(chars[0])
+        }
+        lastTapAtMs = now
+        showComposingWord()
+        updateSuggestions()
+    }
+
+    private fun charsForDigit(digit: Char): String = when (digit) {
+        '2' -> "abc"
+        '3' -> "def"
+        '4' -> "ghi"
+        '5' -> "jkl"
+        '6' -> "mno"
+        '7' -> "pqrs"
+        '8' -> "tuv"
+        '9' -> "wxyz"
+        else -> ""
+    }
+
+    private fun displayWithCase(text: String): String {
+        if (text.isBlank() || !upper) return text
+        val first = text.first().uppercaseChar()
+        return first + text.substring(1)
+    }
+
+    private fun clearMultiTapState() {
+        lastTapDigit = null
+        lastTapIndex = 0
+        lastTapAtMs = 0L
+    }
+
     override fun onStartInputView(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         val caps = settings.autoCapEnabled() && info?.inputType?.and(InputType.TYPE_TEXT_FLAG_CAP_SENTENCES) != 0
         upper = caps
+        digitBuffer.setLength(0)
+        multiTapBuffer.setLength(0)
+        clearMultiTapState()
+        updateSuggestions()
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
