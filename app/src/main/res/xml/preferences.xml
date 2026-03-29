@@ -1,0 +1,36 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <EditTextPreference
+        android:key="dg_api_key"
+        android:title="Deepgram API key"
+        android:useSimpleSummaryProvider="true" />
+    <EditTextPreference
+        android:key="dg_language"
+        android:defaultValue="en-US"
+        android:title="Language" />
+    <EditTextPreference
+        android:key="dg_endpointing"
+        android:defaultValue="300"
+        android:title="Endpointing (ms)" />
+    <SwitchPreferenceCompat
+        android:key="dg_interim"
+        android:defaultValue="true"
+        android:title="Live interim preview" />
+    <SwitchPreferenceCompat
+        android:key="auto_cap"
+        android:defaultValue="true"
+        android:title="Auto capitalization" />
+    <EditTextPreference
+        android:key="dg_keyterms"
+        android:title="Deepgram keyterms (newline separated)"
+        android:dialogMessage="One phrase per line" />
+    <EditTextPreference
+        android:key="text_corrections"
+        android:title="Corrections (phrase<TAB>replacement per line)" />
+    <EditTextPreference
+        android:key="emoji_replacements"
+        android:title="Emoji replacements (phrase<TAB>emoji per line)" />
+    <EditTextPreference
+        android:key="spelling_mode"
+        android:defaultValue="1"
+        android:title="Spelling mode: 0 off, 1 auto, 2 explicit, 3 both" />
+</PreferenceScreen>
