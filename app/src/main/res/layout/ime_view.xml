@@ -24,25 +24,27 @@
     </LinearLayout>
 
     <GridLayout
+        android:id="@+id/t9Grid"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:columnCount="3">
 
         <Button android:id="@+id/key1" android:text="1 .,?" style="@style/T9Key" />
-        <Button android:id="@+id/key2" android:text="2 ABC" style="@style/T9Key" />
-        <Button android:id="@+id/key3" android:text="3 DEF" style="@style/T9Key" />
-        <Button android:id="@+id/key4" android:text="4 GHI" style="@style/T9Key" />
-        <Button android:id="@+id/key5" android:text="5 JKL" style="@style/T9Key" />
-        <Button android:id="@+id/key6" android:text="6 MNO" style="@style/T9Key" />
-        <Button android:id="@+id/key7" android:text="7 PQRS" style="@style/T9Key" />
-        <Button android:id="@+id/key8" android:text="8 TUV" style="@style/T9Key" />
-        <Button android:id="@+id/key9" android:text="9 WXYZ" style="@style/T9Key" />
+        <Button android:id="@+id/key2" android:text="2" style="@style/T9Key" />
+        <Button android:id="@+id/key3" android:text="3" style="@style/T9Key" />
+        <Button android:id="@+id/key4" android:text="4" style="@style/T9Key" />
+        <Button android:id="@+id/key5" android:text="5" style="@style/T9Key" />
+        <Button android:id="@+id/key6" android:text="6" style="@style/T9Key" />
+        <Button android:id="@+id/key7" android:text="7" style="@style/T9Key" />
+        <Button android:id="@+id/key8" android:text="8" style="@style/T9Key" />
+        <Button android:id="@+id/key9" android:text="9" style="@style/T9Key" />
         <Button android:id="@+id/keyStar" android:text="* Sym" style="@style/T9Key" />
         <Button android:id="@+id/key0" android:text="0 Space" style="@style/T9Key" />
         <Button android:id="@+id/keyHash" android:text="# Shift" style="@style/T9Key" />
     </GridLayout>
 
     <LinearLayout
+        android:id="@+id/actionRow"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal">
@@ -50,5 +52,6 @@
         <Button android:id="@+id/keyBackspace" android:text="⌫" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" />
         <Button android:id="@+id/keyEnter" android:text="↵" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" />
         <Button android:id="@+id/keyDictation" android:text="🎤 Hold" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" />
+        <Button android:id="@+id/keySettings" android:text="⚙" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" />
     </LinearLayout>
 </LinearLayout>

@@ -12,6 +12,7 @@ class SettingsStore(context: Context) {
     fun endpointingMs(): Int = (prefs.getString("dg_endpointing", "300") ?: "300").toIntOrNull() ?: 300
     fun interimEnabled(): Boolean = prefs.getBoolean("dg_interim", true)
     fun autoCapEnabled(): Boolean = prefs.getBoolean("auto_cap", true)
+    fun micHardwareKey(): String = prefs.getString("mic_hardware_key", "CALL") ?: "CALL"
 
     fun keyterms(): List<String> = decodeList(prefs.getString("dg_keyterms", "") ?: "")
     fun correctionsMap(): Map<String, String> = decodeMap(prefs.getString("text_corrections", "") ?: "")

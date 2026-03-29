@@ -1,7 +1,10 @@
 package com.example.lightime.ime
 
 import android.inputmethodservice.InputMethodService
+import android.content.Intent
+import android.content.pm.PackageManager
 import android.text.InputType
+import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.MotionEvent
 import android.view.View
@@ -11,12 +14,11 @@ import android.widget.Toast
 import com.example.lightime.R
 import com.example.lightime.db.DictionaryDbHelper
 import com.example.lightime.post.TextPostProcessor
+import com.example.lightime.settings.SettingsActivity
 import com.example.lightime.stt.AudioRecorderManager
 import com.example.lightime.stt.DeepgramStreamingClient
 import com.example.lightime.t9.T9Engine
 import com.example.lightime.util.SettingsStore
-import java.util.Timer
-import java.util.TimerTask
 
 class LightImeService : InputMethodService() {
     private lateinit var settings: SettingsStore
@@ -26,14 +28,10 @@ class LightImeService : InputMethodService() {
     private lateinit var statusLine: TextView
     private lateinit var suggestionButtons: List<Button>
 
-    private val typedBuffer = StringBuilder()
     private val digitBuffer = StringBuilder()
     private var upper = false
 
-    // Multi-tap state (800ms timeout)
-    private var lastDigit: Char? = null
-    private var tapIndex = 0
-    private var tapTimer: Timer? = null
+    private var dictationActive = false
 
     private val deepgram = DeepgramStreamingClient()
     private val audio = AudioRecorderManager()
@@ -77,6 +75,16 @@ class LightImeService : InputMethodService() {
         bindDigitKey(root, R.id.key8, '8', "tuv")
         bindDigitKey(root, R.id.key9, '9', "wxyz")
 
+        root.findViewById<Button>(R.id.keySettings).setOnClickListener {
+            startActivity(Intent(this, SettingsActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+        }
+
+        if (!packageManager.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN)) {
+            root.findViewById<View>(R.id.t9Grid).visibility = View.GONE
+            root.findViewById<View>(R.id.actionRow).visibility = View.GONE
+            showStatus("Use hardware keypad for T9 • predictions above")
+        }
+
         root.findViewById<Button>(R.id.key0).setOnClickListener { commitWord(currentWord()) }
         root.findViewById<Button>(R.id.key1).setOnClickListener { currentInputConnection.commitText(".", 1) }
         root.findViewById<Button>(R.id.keyHash).setOnClickListener { upper = !upper; showStatus(if (upper) "ABC" else "abc") }
@@ -103,34 +111,24 @@ class LightImeService : InputMethodService() {
         root.findViewById<Button>(id).setOnClickListener { onDigitKey(digit, chars) }
     }
 
-    private fun onDigitKey(digit: Char, chars: String) {
-        val letter: Char
-        if (lastDigit == digit) {
-            tapIndex = (tapIndex + 1) % chars.length
-            typedBuffer.setLength(typedBuffer.length - 1)
-            letter = chars[tapIndex]
-        } else {
-            tapIndex = 0
-            letter = chars[tapIndex]
-            digitBuffer.append(digit)
-        }
-        val out = if (upper) letter.uppercaseChar() else letter
-        typedBuffer.append(out)
-        currentInputConnection.setComposingText(typedBuffer.toString(), 1)
-        lastDigit = digit
-        restartTapTimeout()
+    private fun onDigitKey(digit: Char, _chars: String) {
+        digitBuffer.append(digit)
+        showComposingWord()
         updateSuggestions()
     }
 
-    private fun restartTapTimeout() {
-        tapTimer?.cancel()
-        tapTimer = Timer().apply {
-            schedule(object : TimerTask() {
-                override fun run() {
-                    lastDigit = null
-                }
-            }, 800)
+    private fun showComposingWord() {
+        val suggestion = topSuggestion()
+        if (suggestion.isBlank()) {
+            currentInputConnection.setComposingText(digitBuffer.toString(), 1)
+            return
         }
+        val displayed = if (upper && suggestion.isNotBlank()) {
+            suggestion.replaceFirstChar { it.uppercaseChar() }
+        } else {
+            suggestion
+        }
+        currentInputConnection.setComposingText(displayed, 1)
     }
 
     private fun updateSuggestions() {
@@ -138,7 +136,15 @@ class LightImeService : InputMethodService() {
         suggestionButtons.forEachIndexed { idx, button -> button.text = suggestions.getOrElse(idx) { "" } }
     }
 
-    private fun currentWord(): String = if (typedBuffer.isNotBlank()) typedBuffer.toString() else suggestionButtons.firstOrNull { it.text.isNotBlank() }?.text?.toString().orEmpty()
+    private fun topSuggestion(): String = suggestionButtons.firstOrNull { it.text.isNotBlank() }?.text?.toString().orEmpty()
+
+    private fun currentWord(): String {
+        val suggestion = topSuggestion()
+        if (suggestion.isNotBlank()) {
+            return if (upper) suggestion.replaceFirstChar { it.uppercaseChar() } else suggestion
+        }
+        return digitBuffer.toString()
+    }
 
     private fun commitWord(word: String) {
         if (word.isBlank()) {
@@ -148,16 +154,15 @@ class LightImeService : InputMethodService() {
         currentInputConnection.finishComposingText()
         currentInputConnection.commitText("$word ", 1)
         dbHelper.upsertUserWord(word.lowercase())
-        typedBuffer.setLength(0)
         digitBuffer.setLength(0)
         updateSuggestions()
+        currentInputConnection.finishComposingText()
     }
 
     private fun backspaceSingle() {
-        if (typedBuffer.isNotEmpty()) {
-            typedBuffer.setLength(typedBuffer.length - 1)
+        if (digitBuffer.isNotEmpty()) {
             if (digitBuffer.isNotEmpty()) digitBuffer.setLength(digitBuffer.length - 1)
-            currentInputConnection.setComposingText(typedBuffer.toString(), 1)
+            showComposingWord()
             updateSuggestions()
         } else {
             currentInputConnection.deleteSurroundingText(1, 0)
@@ -166,7 +171,6 @@ class LightImeService : InputMethodService() {
 
     private fun deleteWord() {
         currentInputConnection.deleteSurroundingText(20, 0)
-        typedBuffer.setLength(0)
         digitBuffer.setLength(0)
         currentInputConnection.finishComposingText()
         updateSuggestions()
@@ -224,6 +228,7 @@ class LightImeService : InputMethodService() {
                 showStatus(message)
             }
         })
+        dictationActive = true
     }
 
     private fun stopDictationAndFinalize() {
@@ -247,6 +252,7 @@ class LightImeService : InputMethodService() {
         currentInputConnection.finishComposingText()
         if (processed.isNotBlank()) currentInputConnection.commitText("$processed ", 1)
         showStatus("Ready")
+        dictationActive = false
     }
 
     private fun showStatus(msg: String) {
@@ -258,4 +264,72 @@ class LightImeService : InputMethodService() {
         val caps = settings.autoCapEnabled() && info?.inputType?.and(InputType.TYPE_TEXT_FLAG_CAP_SENTENCES) != 0
         upper = caps
     }
+
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        when (keyCode) {
+            micHardwareKeyCode() -> {
+                if (!dictationActive) startDictation() else stopDictationAndFinalize()
+                return true
+            }
+            KeyEvent.KEYCODE_0,
+            KeyEvent.KEYCODE_NUMPAD_0 -> {
+                commitWord(currentWord())
+                return true
+            }
+            KeyEvent.KEYCODE_2,
+            KeyEvent.KEYCODE_NUMPAD_2 -> {
+                onDigitKey('2', "abc")
+                return true
+            }
+            KeyEvent.KEYCODE_3,
+            KeyEvent.KEYCODE_NUMPAD_3 -> {
+                onDigitKey('3', "def")
+                return true
+            }
+            KeyEvent.KEYCODE_4,
+            KeyEvent.KEYCODE_NUMPAD_4 -> {
+                onDigitKey('4', "ghi")
+                return true
+            }
+            KeyEvent.KEYCODE_5,
+            KeyEvent.KEYCODE_NUMPAD_5 -> {
+                onDigitKey('5', "jkl")
+                return true
+            }
+            KeyEvent.KEYCODE_6,
+            KeyEvent.KEYCODE_NUMPAD_6 -> {
+                onDigitKey('6', "mno")
+                return true
+            }
+            KeyEvent.KEYCODE_7,
+            KeyEvent.KEYCODE_NUMPAD_7 -> {
+                onDigitKey('7', "pqrs")
+                return true
+            }
+            KeyEvent.KEYCODE_8,
+            KeyEvent.KEYCODE_NUMPAD_8 -> {
+                onDigitKey('8', "tuv")
+                return true
+            }
+            KeyEvent.KEYCODE_9,
+            KeyEvent.KEYCODE_NUMPAD_9 -> {
+                onDigitKey('9', "wxyz")
+                return true
+            }
+            KeyEvent.KEYCODE_DEL -> {
+                backspaceSingle()
+                return true
+            }
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    private fun micHardwareKeyCode(): Int = when (settings.micHardwareKey()) {
+        "SEARCH" -> KeyEvent.KEYCODE_SEARCH
+        "CAMERA" -> KeyEvent.KEYCODE_CAMERA
+        "VOLUME_UP" -> KeyEvent.KEYCODE_VOLUME_UP
+        "VOLUME_DOWN" -> KeyEvent.KEYCODE_VOLUME_DOWN
+        else -> KeyEvent.KEYCODE_CALL
+    }
+
 }
