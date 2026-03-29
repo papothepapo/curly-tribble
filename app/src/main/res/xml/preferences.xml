@@ -25,10 +25,10 @@
         android:dialogMessage="One phrase per line" />
     <EditTextPreference
         android:key="text_corrections"
-        android:title="Corrections (phrase<TAB>replacement per line)" />
+        android:title="Corrections (phrase&lt;TAB&gt;replacement per line)" />
     <EditTextPreference
         android:key="emoji_replacements"
-        android:title="Emoji replacements (phrase<TAB>emoji per line)" />
+        android:title="Emoji replacements (phrase&lt;TAB&gt;emoji per line)" />
     <EditTextPreference
         android:key="spelling_mode"
         android:defaultValue="1"
