@@ -1,26 +1,41 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:background="@color/keyboardSurface"
     android:orientation="vertical"
-    android:padding="4dp">
+    android:paddingStart="6dp"
+    android:paddingTop="6dp"
+    android:paddingEnd="6dp"
+    android:paddingBottom="8dp">
 
     <TextView
         android:id="@+id/statusLine"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:textSize="12sp"
-        android:textColor="#444"
-        android:text="Ready" />
+        android:paddingStart="6dp"
+        android:paddingBottom="4dp"
+        android:text="Ready"
+        android:textColor="@color/statusText"
+        android:textSize="12sp" />
 
     <LinearLayout
         android:id="@+id/suggestionStrip"
         android:layout_width="match_parent"
         android:layout_height="40dp"
+        android:layout_marginBottom="4dp"
         android:orientation="horizontal">
 
-        <Button android:id="@+id/suggestion1" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
-        <Button android:id="@+id/suggestion2" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
-        <Button android:id="@+id/suggestion3" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" />
+        <Button
+            android:id="@+id/suggestion1"
+            style="@style/SuggestionKey" />
+
+        <Button
+            android:id="@+id/suggestion2"
+            style="@style/SuggestionKey" />
+
+        <Button
+            android:id="@+id/suggestion3"
+            style="@style/SuggestionKey" />
     </LinearLayout>
 
     <GridLayout
@@ -29,29 +44,45 @@
         android:layout_height="wrap_content"
         android:columnCount="3">
 
-        <Button android:id="@+id/key1" android:text="1 .,?" style="@style/T9Key" />
-        <Button android:id="@+id/key2" android:text="2" style="@style/T9Key" />
-        <Button android:id="@+id/key3" android:text="3" style="@style/T9Key" />
-        <Button android:id="@+id/key4" android:text="4" style="@style/T9Key" />
-        <Button android:id="@+id/key5" android:text="5" style="@style/T9Key" />
-        <Button android:id="@+id/key6" android:text="6" style="@style/T9Key" />
-        <Button android:id="@+id/key7" android:text="7" style="@style/T9Key" />
-        <Button android:id="@+id/key8" android:text="8" style="@style/T9Key" />
-        <Button android:id="@+id/key9" android:text="9" style="@style/T9Key" />
-        <Button android:id="@+id/keyStar" android:text="* Sym" style="@style/T9Key" />
-        <Button android:id="@+id/key0" android:text="0 Space" style="@style/T9Key" />
-        <Button android:id="@+id/keyHash" android:text="# Shift" style="@style/T9Key" />
+        <Button android:id="@+id/key1" style="@style/T9Key" android:text="1 .,?" />
+        <Button android:id="@+id/key2" style="@style/T9Key" android:text="2" />
+        <Button android:id="@+id/key3" style="@style/T9Key" android:text="3" />
+        <Button android:id="@+id/key4" style="@style/T9Key" android:text="4" />
+        <Button android:id="@+id/key5" style="@style/T9Key" android:text="5" />
+        <Button android:id="@+id/key6" style="@style/T9Key" android:text="6" />
+        <Button android:id="@+id/key7" style="@style/T9Key" android:text="7" />
+        <Button android:id="@+id/key8" style="@style/T9Key" android:text="8" />
+        <Button android:id="@+id/key9" style="@style/T9Key" android:text="9" />
+        <Button android:id="@+id/keyStar" style="@style/T9Key" android:text="* Sym" />
+        <Button android:id="@+id/key0" style="@style/T9Key" android:text="0 Space" />
+        <Button android:id="@+id/keyHash" style="@style/T9Key" android:text="# Shift" />
     </GridLayout>
 
     <LinearLayout
         android:id="@+id/actionRow"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="3dp"
         android:orientation="horizontal">
 
-        <Button android:id="@+id/keyBackspace" android:text="⌫" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" />
-        <Button android:id="@+id/keyEnter" android:text="↵" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" />
-        <Button android:id="@+id/keyDictation" android:text="🎤 Hold" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" />
-        <Button android:id="@+id/keySettings" android:text="⚙" android:layout_width="0dp" android:layout_weight="1" android:layout_height="48dp" />
+        <Button
+            android:id="@+id/keyBackspace"
+            style="@style/ActionKey"
+            android:text="⌫" />
+
+        <Button
+            android:id="@+id/keyEnter"
+            style="@style/ActionKey"
+            android:text="↵" />
+
+        <Button
+            android:id="@+id/keyDictation"
+            style="@style/ActionKey"
+            android:text="🎤 Hold" />
+
+        <Button
+            android:id="@+id/keySettings"
+            style="@style/ActionKey"
+            android:text="⚙" />
     </LinearLayout>
 </LinearLayout>

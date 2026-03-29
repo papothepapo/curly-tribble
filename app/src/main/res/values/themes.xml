@@ -3,10 +3,30 @@
         <item name="android:statusBarColor" tools:targetApi="l">@android:color/transparent</item>
     </style>
 
-    <style name="T9Key">
+    <style name="KeyboardButtonBase">
         <item name="android:layout_width">0dp</item>
-        <item name="android:layout_height">52dp</item>
-        <item name="android:layout_columnWeight">1</item>
+        <item name="android:layout_margin">2dp</item>
+        <item name="android:background">@drawable/key_bg</item>
         <item name="android:textAllCaps">false</item>
+        <item name="android:textColor">@color/keyText</item>
+    </style>
+
+    <style name="T9Key" parent="KeyboardButtonBase">
+        <item name="android:layout_height">50dp</item>
+        <item name="android:layout_columnWeight">1</item>
+        <item name="android:textSize">16sp</item>
+    </style>
+
+    <style name="ActionKey" parent="KeyboardButtonBase">
+        <item name="android:layout_height">46dp</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:textSize">18sp</item>
+    </style>
+
+    <style name="SuggestionKey" parent="KeyboardButtonBase">
+        <item name="android:layout_height">match_parent</item>
+        <item name="android:layout_weight">1</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:background">@drawable/suggestion_bg</item>
     </style>
 </resources>
