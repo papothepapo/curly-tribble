@@ -34,7 +34,11 @@ class DictionaryDbHelper(private val context: Context) : SQLiteOpenHelper(contex
         db.execSQL("CREATE INDEX IF NOT EXISTS idx_user_words_t9 ON user_words(t9)")
     }
 
-    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) = Unit
+    override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
+        if (oldVersion < 3) {
+            db.execSQL("DELETE FROM words")
+        }
+    }
 
     fun ensureSeedLoaded() {
         val db = writableDatabase
@@ -84,7 +88,7 @@ class DictionaryDbHelper(private val context: Context) : SQLiteOpenHelper(contex
 
     companion object {
         const val DB_NAME = "dictionary.db"
-        private const val DB_VERSION = 2
+        private const val DB_VERSION = 3
 
         fun t9Of(word: String): String {
             val map = mapOf(

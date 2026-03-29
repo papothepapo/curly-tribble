@@ -21,5 +21,6 @@ class SettingsFragment : PreferenceFragmentCompat() {
 
         findPreference<SwitchPreferenceCompat>("dg_interim")?.isChecked = prefs.getBoolean("dg_interim", true)
         findPreference<SwitchPreferenceCompat>("auto_cap")?.isChecked = prefs.getBoolean("auto_cap", true)
+        findPreference<SwitchPreferenceCompat>("t9_predictive")?.isChecked = prefs.getBoolean("t9_predictive", true)
     }
 }
