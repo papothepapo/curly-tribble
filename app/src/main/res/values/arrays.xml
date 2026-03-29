@@ -72,4 +72,154 @@
         <item>SPACE</item>
         <item>SHIFT_LONG_PRESS</item>
     </string-array>
+
+    <string-array name="hardware_key_labels">
+        <item>0 key</item>
+        <item>1 key</item>
+        <item>2 key</item>
+        <item>3 key</item>
+        <item>4 key</item>
+        <item>5 key</item>
+        <item>6 key</item>
+        <item>7 key</item>
+        <item>8 key</item>
+        <item>9 key</item>
+        <item>* key</item>
+        <item># key</item>
+        <item>D-pad center</item>
+        <item>Call key</item>
+        <item>End call key</item>
+        <item>Delete / Backspace</item>
+        <item>Clear key</item>
+        <item>Enter key</item>
+        <item>Space key</item>
+        <item>Search key</item>
+        <item>Camera key</item>
+        <item>Volume up</item>
+        <item>Volume down</item>
+    </string-array>
+
+    <string-array name="hardware_key_values">
+        <item>KEY_0</item>
+        <item>KEY_1</item>
+        <item>KEY_2</item>
+        <item>KEY_3</item>
+        <item>KEY_4</item>
+        <item>KEY_5</item>
+        <item>KEY_6</item>
+        <item>KEY_7</item>
+        <item>KEY_8</item>
+        <item>KEY_9</item>
+        <item>STAR</item>
+        <item>POUND</item>
+        <item>DPAD_CENTER</item>
+        <item>CALL</item>
+        <item>ENDCALL</item>
+        <item>DEL</item>
+        <item>CLEAR</item>
+        <item>ENTER</item>
+        <item>SPACE</item>
+        <item>SEARCH</item>
+        <item>CAMERA</item>
+        <item>VOLUME_UP</item>
+        <item>VOLUME_DOWN</item>
+    </string-array>
+
+    <string-array name="hardware_key_labels_with_long_press">
+        <item>0 key</item>
+        <item>1 key</item>
+        <item>2 key</item>
+        <item>3 key</item>
+        <item>4 key</item>
+        <item>5 key</item>
+        <item>6 key</item>
+        <item>7 key</item>
+        <item>8 key</item>
+        <item>9 key</item>
+        <item>* key</item>
+        <item># key</item>
+        <item>D-pad center</item>
+        <item>Call key</item>
+        <item>End call key</item>
+        <item>Delete / Backspace</item>
+        <item>Clear key</item>
+        <item>Enter key</item>
+        <item>Space key</item>
+        <item>Search key</item>
+        <item>Camera key</item>
+        <item>Volume up</item>
+        <item>Volume down</item>
+        <item>Long press 0 key</item>
+        <item>Long press 1 key</item>
+        <item>Long press 2 key</item>
+        <item>Long press 3 key</item>
+        <item>Long press 4 key</item>
+        <item>Long press 5 key</item>
+        <item>Long press 6 key</item>
+        <item>Long press 7 key</item>
+        <item>Long press 8 key</item>
+        <item>Long press 9 key</item>
+        <item>Long press * key</item>
+        <item>Long press # key</item>
+        <item>Long press D-pad center</item>
+        <item>Long press Call key</item>
+        <item>Long press End call key</item>
+        <item>Long press Delete / Backspace</item>
+        <item>Long press Clear key</item>
+        <item>Long press Enter key</item>
+        <item>Long press Space key</item>
+        <item>Long press Search key</item>
+        <item>Long press Camera key</item>
+        <item>Long press Volume up</item>
+        <item>Long press Volume down</item>
+    </string-array>
+
+    <string-array name="hardware_key_values_with_long_press">
+        <item>KEY_0</item>
+        <item>KEY_1</item>
+        <item>KEY_2</item>
+        <item>KEY_3</item>
+        <item>KEY_4</item>
+        <item>KEY_5</item>
+        <item>KEY_6</item>
+        <item>KEY_7</item>
+        <item>KEY_8</item>
+        <item>KEY_9</item>
+        <item>STAR</item>
+        <item>POUND</item>
+        <item>DPAD_CENTER</item>
+        <item>CALL</item>
+        <item>ENDCALL</item>
+        <item>DEL</item>
+        <item>CLEAR</item>
+        <item>ENTER</item>
+        <item>SPACE</item>
+        <item>SEARCH</item>
+        <item>CAMERA</item>
+        <item>VOLUME_UP</item>
+        <item>VOLUME_DOWN</item>
+        <item>LP_KEY_0</item>
+        <item>LP_KEY_1</item>
+        <item>LP_KEY_2</item>
+        <item>LP_KEY_3</item>
+        <item>LP_KEY_4</item>
+        <item>LP_KEY_5</item>
+        <item>LP_KEY_6</item>
+        <item>LP_KEY_7</item>
+        <item>LP_KEY_8</item>
+        <item>LP_KEY_9</item>
+        <item>LP_STAR</item>
+        <item>LP_POUND</item>
+        <item>LP_DPAD_CENTER</item>
+        <item>LP_CALL</item>
+        <item>LP_ENDCALL</item>
+        <item>LP_DEL</item>
+        <item>LP_CLEAR</item>
+        <item>LP_ENTER</item>
+        <item>LP_SPACE</item>
+        <item>LP_SEARCH</item>
+        <item>LP_CAMERA</item>
+        <item>LP_VOLUME_UP</item>
+        <item>LP_VOLUME_DOWN</item>
+    </string-array>
 </resources>
