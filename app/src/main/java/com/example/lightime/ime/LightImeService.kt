@@ -362,12 +362,13 @@ class LightImeService : InputMethodService() {
         dictationActive = false
 
         audio.stop()
-        deepgram.finalizeAndClose()
+        deepgram.finalize()
         pendingFinalizeSessionId = finishingSessionId
 
         mainHandler.postDelayed({
             if (pendingFinalizeSessionId != finishingSessionId) return@postDelayed
             pendingFinalizeSessionId = null
+            deepgram.close()
             commitDictationResult()
         }, DICTATION_FINALIZE_GRACE_MS)
     }
@@ -533,6 +534,6 @@ class LightImeService : InputMethodService() {
     companion object {
         private const val BACKSPACE_INITIAL_REPEAT_DELAY_MS = 350L
         private const val BACKSPACE_REPEAT_INTERVAL_MS = 60L
-        private const val DICTATION_FINALIZE_GRACE_MS = 180L
+        private const val DICTATION_FINALIZE_GRACE_MS = 1200L
     }
 }

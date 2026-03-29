@@ -72,8 +72,11 @@ class DeepgramStreamingClient {
         socket?.send(buffer.copyOf(size).toByteString())
     }
 
-    fun finalizeAndClose() {
+    fun finalize() {
         socket?.send("{\"type\":\"Finalize\"}")
+    }
+
+    fun close() {
         socket?.close(1000, "done")
         socket = null
     }
