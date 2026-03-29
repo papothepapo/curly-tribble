@@ -42,7 +42,7 @@ class LightImeService : InputMethodService() {
     private var lastTapIndex = 0
     private var lastTapAtMs = 0L
     private val multiTapTimeoutMs = 900L
-    private var upper = false
+    private var inputMode = InputMode.LOWER
 
     private var dictationActive = false
     private var dictationSessionId = 0L
@@ -122,12 +122,26 @@ class LightImeService : InputMethodService() {
             showStatus("Use hardware keypad for T9 • predictions above")
         }
 
-        root.findViewById<Button>(R.id.key0).setOnClickListener { commitWord(currentWord()) }
-        root.findViewById<Button>(R.id.key1).setOnClickListener { commitPunctuation(".") }
-        root.findViewById<Button>(R.id.keyHash).setOnClickListener {
-            upper = !upper
-            showStatus(if (upper) "ABC" else "abc")
-            showComposingWord()
+        root.findViewById<Button>(R.id.key0).setOnClickListener {
+            if (inputMode == InputMode.NUMERIC) {
+                currentInputConnection?.commitText("0", 1)
+            } else {
+                commitWord(currentWord())
+            }
+        }
+        root.findViewById<Button>(R.id.key1).setOnClickListener {
+            if (inputMode == InputMode.NUMERIC) {
+                currentInputConnection?.commitText("1", 1)
+            } else {
+                commitPunctuation(".")
+            }
+        }
+        root.findViewById<Button>(R.id.keyHash).apply {
+            setOnClickListener { onHashShortPress() }
+            setOnLongClickListener {
+                onHashLongPress()
+                true
+            }
         }
         root.findViewById<Button>(R.id.keyStar).setOnClickListener { commitPunctuation(",") }
         root.findViewById<Button>(R.id.keyEnter).setOnClickListener {
@@ -178,6 +192,11 @@ class LightImeService : InputMethodService() {
     }
 
     private fun onDigitKey(digit: Char, _chars: String) {
+        if (inputMode == InputMode.NUMERIC) {
+            clearCompositionBuffers()
+            currentInputConnection?.commitText(digit.toString(), 1)
+            return
+        }
         if (!settings.predictiveT9Enabled()) {
             handleMultiTapDigit(digit)
             return
@@ -188,6 +207,10 @@ class LightImeService : InputMethodService() {
     }
 
     private fun showComposingWord() {
+        if (inputMode == InputMode.NUMERIC) {
+            currentInputConnection?.finishComposingText()
+            return
+        }
         if (!settings.predictiveT9Enabled()) {
             currentInputConnection?.setComposingText(displayWithCase(multiTapBuffer.toString()), 1)
             return
@@ -202,6 +225,11 @@ class LightImeService : InputMethodService() {
     }
 
     private fun updateSuggestions() {
+        if (inputMode == InputMode.NUMERIC) {
+            currentSuggestions = emptyList()
+            suggestionButtons.forEach { it.text = "" }
+            return
+        }
         if (!settings.predictiveT9Enabled()) {
             currentSuggestions = emptyList()
             suggestionButtons.forEach { it.text = "" }
@@ -220,6 +248,7 @@ class LightImeService : InputMethodService() {
     private fun topSuggestion(): String = currentSuggestions.firstOrNull().orEmpty()
 
     private fun currentWord(): String {
+        if (inputMode == InputMode.NUMERIC) return ""
         if (!settings.predictiveT9Enabled()) {
             return displayWithCase(multiTapBuffer.toString())
         }
@@ -467,9 +496,11 @@ class LightImeService : InputMethodService() {
     }
 
     private fun displayWithCase(text: String): String {
-        if (text.isBlank() || !upper) return text
-        val first = text.first().uppercaseChar()
-        return first + text.substring(1)
+        if (text.isBlank()) return text
+        return when (inputMode) {
+            InputMode.UPPER -> text.replaceFirstChar { it.uppercaseChar() }
+            else -> text
+        }
     }
 
     private fun clearMultiTapState() {
@@ -481,7 +512,7 @@ class LightImeService : InputMethodService() {
     override fun onStartInputView(info: android.view.inputmethod.EditorInfo?, restarting: Boolean) {
         super.onStartInputView(info, restarting)
         val caps = settings.autoCapEnabled() && info?.inputType?.and(InputType.TYPE_TEXT_FLAG_CAP_SENTENCES) != 0
-        upper = caps
+        inputMode = if (caps) InputMode.UPPER else InputMode.LOWER
         clearCompositionBuffers()
         currentInputConnection?.finishComposingText()
         stopBackspaceRepeat()
@@ -506,11 +537,19 @@ class LightImeService : InputMethodService() {
                 return true
             }
             spaceHardwareKeyCode(), KeyEvent.KEYCODE_NUMPAD_0 -> {
-                commitWord(currentWord())
+                if (inputMode == InputMode.NUMERIC) {
+                    currentInputConnection?.commitText("0", 1)
+                } else {
+                    commitWord(currentWord())
+                }
                 return true
             }
             punctuationHardwareKeyCode(), KeyEvent.KEYCODE_NUMPAD_1 -> {
-                commitPunctuation(".")
+                if (inputMode == InputMode.NUMERIC) {
+                    currentInputConnection?.commitText("1", 1)
+                } else {
+                    commitPunctuation(".")
+                }
                 return true
             }
             KeyEvent.KEYCODE_2,
@@ -563,9 +602,7 @@ class LightImeService : InputMethodService() {
                 return true
             }
             shiftHardwareKeyCode() -> {
-                upper = !upper
-                showStatus(if (upper) "ABC" else "abc")
-                showComposingWord()
+                onHashShortPress()
                 return true
             }
             symbolHardwareKeyCode() -> {
@@ -574,6 +611,14 @@ class LightImeService : InputMethodService() {
             }
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyLongPress(keyCode: Int, event: KeyEvent?): Boolean {
+        if (keyCode == shiftHardwareKeyCode()) {
+            onHashLongPress()
+            return true
+        }
+        return super.onKeyLongPress(keyCode, event)
     }
 
     override fun onEvaluateInputViewShown(): Boolean {
@@ -619,6 +664,31 @@ class LightImeService : InputMethodService() {
         return ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED
     }
 
+    private fun onHashShortPress() {
+        inputMode = when (inputMode) {
+            InputMode.LOWER -> InputMode.UPPER
+            InputMode.UPPER -> InputMode.LOWER
+            InputMode.NUMERIC -> InputMode.LOWER
+        }
+        showInputModeStatus()
+        showComposingWord()
+    }
+
+    private fun onHashLongPress() {
+        inputMode = if (inputMode == InputMode.NUMERIC) InputMode.LOWER else InputMode.NUMERIC
+        clearCompositionBuffers()
+        showInputModeStatus()
+    }
+
+    private fun showInputModeStatus() {
+        val modeLabel = when (inputMode) {
+            InputMode.LOWER -> "abc"
+            InputMode.UPPER -> "ABC"
+            InputMode.NUMERIC -> "123"
+        }
+        showStatus(modeLabel)
+    }
+
     private fun suffixDelta(previous: String, current: String): String {
         if (current.isBlank()) return ""
         if (previous.isBlank()) return current
@@ -643,5 +713,11 @@ class LightImeService : InputMethodService() {
         private const val BACKSPACE_INITIAL_REPEAT_DELAY_MS = 350L
         private const val BACKSPACE_REPEAT_INTERVAL_MS = 60L
         private const val DICTATION_FINALIZE_GRACE_MS = 1200L
+    }
+
+    private enum class InputMode {
+        LOWER,
+        UPPER,
+        NUMERIC
     }
 }
