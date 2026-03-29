@@ -14,4 +14,32 @@
         <item>VOLUME_UP</item>
         <item>VOLUME_DOWN</item>
     </string-array>
+
+    <string-array name="keymap_key_labels">
+        <item>0 key</item>
+        <item>1 key</item>
+        <item>* key</item>
+        <item># key</item>
+        <item>D-pad center</item>
+        <item>Call key</item>
+        <item>End call key</item>
+        <item>Delete / Backspace</item>
+        <item>Clear key</item>
+        <item>Enter key</item>
+        <item>Space key</item>
+    </string-array>
+
+    <string-array name="keymap_key_values">
+        <item>KEY_0</item>
+        <item>KEY_1</item>
+        <item>STAR</item>
+        <item>POUND</item>
+        <item>DPAD_CENTER</item>
+        <item>CALL</item>
+        <item>ENDCALL</item>
+        <item>DEL</item>
+        <item>CLEAR</item>
+        <item>ENTER</item>
+        <item>SPACE</item>
+    </string-array>
 </resources>

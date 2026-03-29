@@ -22,6 +22,12 @@ class SettingsFragment : PreferenceFragmentCompat() {
         findPreference<EditTextPreference>("dg_endpointing")?.summaryProvider = EditTextPreference.SimpleSummaryProvider.getInstance()
         findPreference<EditTextPreference>("dg_language")?.summaryProvider = EditTextPreference.SimpleSummaryProvider.getInstance()
         findPreference<ListPreference>("mic_hardware_key")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        findPreference<ListPreference>("keymap_backspace")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        findPreference<ListPreference>("keymap_enter")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        findPreference<ListPreference>("keymap_space")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        findPreference<ListPreference>("keymap_period")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        findPreference<ListPreference>("keymap_shift")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        findPreference<ListPreference>("keymap_symbol")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
 
         findPreference<SwitchPreferenceCompat>("dg_interim")?.isChecked = prefs.getBoolean("dg_interim", true)
         findPreference<SwitchPreferenceCompat>("auto_cap")?.isChecked = prefs.getBoolean("auto_cap", true)
