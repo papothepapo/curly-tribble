@@ -30,8 +30,8 @@ class LightImeService : InputMethodService() {
     private lateinit var dbHelper: DictionaryDbHelper
     private var t9Engine: T9Engine? = null
 
-    private lateinit var statusLine: TextView
-    private lateinit var suggestionButtons: List<Button>
+    private var statusLine: TextView? = null
+    private var suggestionButtons: List<Button> = emptyList()
     private var currentSuggestions: List<String> = emptyList()
     private var hasTouchscreen: Boolean = true
 
@@ -422,7 +422,6 @@ class LightImeService : InputMethodService() {
             spellingMode = settings.spellingMode()
         )
 
-        currentInputConnection?.finishComposingText()
         if (processed.isNotBlank()) currentInputConnection?.commitText("$processed ", 1)
         dictatedFinal.setLength(0)
         interimSegment = ""
@@ -431,7 +430,7 @@ class LightImeService : InputMethodService() {
     }
 
     private fun showStatus(msg: String) {
-        statusLine.post { statusLine.text = msg }
+        statusLine?.post { statusLine?.text = msg }
     }
 
     private fun handleMultiTapDigit(digit: Char) {
