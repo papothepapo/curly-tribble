@@ -1,8 +1,10 @@
 package com.example.lightime.ime
 
-import android.inputmethodservice.InputMethodService
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.inputmethodservice.InputMethodService
+import android.os.Handler
+import android.os.Looper
 import android.text.InputType
 import android.view.KeyEvent
 import android.view.LayoutInflater
@@ -27,6 +29,7 @@ class LightImeService : InputMethodService() {
 
     private lateinit var statusLine: TextView
     private lateinit var suggestionButtons: List<Button>
+    private var currentSuggestions: List<String> = emptyList()
     private var hasTouchscreen: Boolean = true
 
     private val digitBuffer = StringBuilder()
@@ -38,6 +41,7 @@ class LightImeService : InputMethodService() {
     private var upper = false
 
     private var dictationActive = false
+    private var dictationSessionId = 0L
 
     private val deepgram = DeepgramStreamingClient()
     private val audio = AudioRecorderManager()
@@ -46,6 +50,16 @@ class LightImeService : InputMethodService() {
     private val dictatedFinal = StringBuilder()
     private var interimSegment = ""
     private var lastFinalChunk = ""
+
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private var backspaceRepeating = false
+    private val repeatingDeleteRunnable = object : Runnable {
+        override fun run() {
+            if (!backspaceRepeating) return
+            backspaceSingle()
+            mainHandler.postDelayed(this, BACKSPACE_REPEAT_INTERVAL_MS)
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -96,14 +110,32 @@ class LightImeService : InputMethodService() {
         }
 
         root.findViewById<Button>(R.id.key0).setOnClickListener { commitWord(currentWord()) }
-        root.findViewById<Button>(R.id.key1).setOnClickListener { currentInputConnection.commitText(".", 1) }
-        root.findViewById<Button>(R.id.keyHash).setOnClickListener { upper = !upper; showStatus(if (upper) "ABC" else "abc") }
-        root.findViewById<Button>(R.id.keyStar).setOnClickListener { currentInputConnection.commitText(",", 1) }
-        root.findViewById<Button>(R.id.keyEnter).setOnClickListener { currentInputConnection.sendKeyEvent(android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, android.view.KeyEvent.KEYCODE_ENTER)) }
+        root.findViewById<Button>(R.id.key1).setOnClickListener { commitPunctuation(".") }
+        root.findViewById<Button>(R.id.keyHash).setOnClickListener {
+            upper = !upper
+            showStatus(if (upper) "ABC" else "abc")
+            showComposingWord()
+        }
+        root.findViewById<Button>(R.id.keyStar).setOnClickListener { commitPunctuation(",") }
+        root.findViewById<Button>(R.id.keyEnter).setOnClickListener {
+            commitComposingWordIfAny()
+            currentInputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+        }
 
-        root.findViewById<Button>(R.id.keyBackspace).apply {
-            setOnClickListener { backspaceSingle() }
-            setOnLongClickListener { deleteWord(); true }
+        root.findViewById<Button>(R.id.keyBackspace).setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    backspaceSingle()
+                    backspaceRepeating = true
+                    mainHandler.postDelayed(repeatingDeleteRunnable, BACKSPACE_INITIAL_REPEAT_DELAY_MS)
+                    true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    stopBackspaceRepeat()
+                    true
+                }
+                else -> false
+            }
         }
 
         root.findViewById<Button>(R.id.keyDictation).setOnTouchListener { _, event ->
@@ -138,67 +170,83 @@ class LightImeService : InputMethodService() {
             return
         }
         digitBuffer.append(digit)
-        showComposingWord()
         updateSuggestions()
+        showComposingWord()
     }
 
     private fun showComposingWord() {
         if (!settings.predictiveT9Enabled()) {
-            val text = displayWithCase(multiTapBuffer.toString())
-            currentInputConnection.setComposingText(text, 1)
+            currentInputConnection?.setComposingText(displayWithCase(multiTapBuffer.toString()), 1)
             return
         }
         val suggestion = topSuggestion()
-        if (suggestion.isBlank()) {
-            if (hasTouchscreen) {
-                currentInputConnection.setComposingText(digitBuffer.toString(), 1)
-            } else {
-                currentInputConnection.setComposingText("", 1)
-            }
-            return
+        val displayText = when {
+            suggestion.isNotBlank() -> displayWithCase(suggestion)
+            hasTouchscreen -> digitBuffer.toString()
+            else -> ""
         }
-        val displayed = if (upper && suggestion.isNotBlank()) {
-            suggestion.replaceFirstChar { it.uppercaseChar() }
-        } else {
-            suggestion
-        }
-        currentInputConnection.setComposingText(displayed, 1)
+        currentInputConnection?.setComposingText(displayText, 1)
     }
 
     private fun updateSuggestions() {
         if (!settings.predictiveT9Enabled()) {
+            currentSuggestions = emptyList()
             suggestionButtons.forEach { it.text = "" }
             return
         }
-        val suggestions = t9Engine.suggestions(digitBuffer.toString(), 3)
-        suggestionButtons.forEachIndexed { idx, button -> button.text = suggestions.getOrElse(idx) { "" } }
+        currentSuggestions = t9Engine.suggestions(digitBuffer.toString(), 3)
+        suggestionButtons.forEachIndexed { idx, button -> button.text = currentSuggestions.getOrElse(idx) { "" } }
     }
 
-    private fun topSuggestion(): String = suggestionButtons.firstOrNull { it.text.isNotBlank() }?.text?.toString().orEmpty()
+    private fun topSuggestion(): String = currentSuggestions.firstOrNull().orEmpty()
 
     private fun currentWord(): String {
         if (!settings.predictiveT9Enabled()) {
             return displayWithCase(multiTapBuffer.toString())
         }
         val suggestion = topSuggestion()
-        if (suggestion.isNotBlank()) {
-            return if (upper) suggestion.replaceFirstChar { it.uppercaseChar() } else suggestion
-        }
+        if (suggestion.isNotBlank()) return displayWithCase(suggestion)
         return digitBuffer.toString()
     }
 
     private fun commitWord(word: String) {
+        val ic = currentInputConnection ?: return
         if (word.isBlank()) {
-            currentInputConnection.commitText(" ", 1)
+            ic.commitText(" ", 1)
+            clearCompositionBuffers()
             return
         }
-        currentInputConnection.commitText("$word ", 1)
+        ic.commitText("$word ", 1)
         dbHelper.upsertUserWord(word.lowercase())
+        clearCompositionBuffers()
+    }
+
+    private fun commitPunctuation(mark: String) {
+        val ic = currentInputConnection ?: return
+        val word = currentWord()
+        if (word.isNotBlank()) {
+            ic.commitText(word, 1)
+            dbHelper.upsertUserWord(word.lowercase())
+        }
+        ic.commitText(mark, 1)
+        clearCompositionBuffers()
+    }
+
+    private fun clearCompositionBuffers() {
         digitBuffer.setLength(0)
         multiTapBuffer.setLength(0)
         clearMultiTapState()
+        currentInputConnection?.finishComposingText()
         updateSuggestions()
-        currentInputConnection.finishComposingText()
+    }
+
+    private fun commitComposingWordIfAny() {
+        val word = currentWord()
+        if (word.isBlank()) return
+        val ic = currentInputConnection ?: return
+        ic.commitText(word, 1)
+        dbHelper.upsertUserWord(word.lowercase())
+        clearCompositionBuffers()
     }
 
     private fun backspaceSingle() {
@@ -208,24 +256,22 @@ class LightImeService : InputMethodService() {
             return
         }
         if (digitBuffer.isNotEmpty()) {
-            if (digitBuffer.isNotEmpty()) digitBuffer.setLength(digitBuffer.length - 1)
-            showComposingWord()
+            digitBuffer.setLength(digitBuffer.length - 1)
             updateSuggestions()
-        } else {
-            currentInputConnection.deleteSurroundingText(1, 0)
+            showComposingWord()
+            return
         }
+        currentInputConnection?.deleteSurroundingText(1, 0)
     }
 
-    private fun deleteWord() {
-        currentInputConnection.deleteSurroundingText(20, 0)
-        digitBuffer.setLength(0)
-        multiTapBuffer.setLength(0)
-        clearMultiTapState()
-        currentInputConnection.finishComposingText()
-        updateSuggestions()
+    private fun stopBackspaceRepeat() {
+        backspaceRepeating = false
+        mainHandler.removeCallbacks(repeatingDeleteRunnable)
     }
 
     private fun startDictation() {
+        if (dictationActive) return
+
         val apiKey = settings.apiKey()
         if (apiKey.isBlank()) {
             showStatus("Set Deepgram API key in Settings")
@@ -233,9 +279,12 @@ class LightImeService : InputMethodService() {
             return
         }
 
+        commitComposingWordIfAny()
+
         dictatedFinal.setLength(0)
         interimSegment = ""
         lastFinalChunk = ""
+        val sessionId = ++dictationSessionId
         showStatus("Listening…")
 
         deepgram.connect(
@@ -245,20 +294,21 @@ class LightImeService : InputMethodService() {
             keyterms = settings.keyterms(),
             listener = object : DeepgramStreamingClient.Listener {
                 override fun onInterim(text: String) {
+                    if (!isActiveDictationSession(sessionId)) return
                     interimSegment = text
                     if (settings.interimEnabled()) {
-                        currentInputConnection.setComposingText((dictatedFinal.toString() + " " + interimSegment).trim(), 1)
+                        currentInputConnection?.setComposingText((dictatedFinal.toString() + " " + interimSegment).trim(), 1)
                     }
                 }
 
                 override fun onFinalChunk(text: String, speechFinal: Boolean) {
+                    if (!isActiveDictationSession(sessionId)) return
                     val normalized = text.trim()
                     if (normalized.isBlank()) return
                     if (normalized == lastFinalChunk) return
 
                     val appendSegment = when {
-                        lastFinalChunk.isNotBlank() && normalized.startsWith(lastFinalChunk) ->
-                            normalized.removePrefix(lastFinalChunk).trim()
+                        lastFinalChunk.isNotBlank() && normalized.startsWith(lastFinalChunk) -> normalized.removePrefix(lastFinalChunk).trim()
                         else -> normalized
                     }
                     if (appendSegment.isBlank()) {
@@ -270,15 +320,17 @@ class LightImeService : InputMethodService() {
                     dictatedFinal.append(appendSegment)
                     interimSegment = ""
                     lastFinalChunk = normalized
-                    currentInputConnection.setComposingText(dictatedFinal.toString(), 1)
+                    currentInputConnection?.setComposingText(dictatedFinal.toString(), 1)
                     if (speechFinal) dictatedFinal.append(' ')
                 }
 
                 override fun onError(message: String) {
+                    if (!isActiveDictationSession(sessionId)) return
                     showStatus(message)
                 }
 
                 override fun onClosed() {
+                    if (!isActiveDictationSession(sessionId)) return
                     showStatus("Dictation stopped")
                 }
             }
@@ -286,17 +338,27 @@ class LightImeService : InputMethodService() {
 
         audio.start(object : AudioRecorderManager.Listener {
             override fun onAudioChunk(buffer: ByteArray, size: Int) {
+                if (!isActiveDictationSession(sessionId)) return
                 deepgram.sendAudio(buffer, size)
             }
 
             override fun onError(message: String) {
+                if (!isActiveDictationSession(sessionId)) return
                 showStatus(message)
             }
         })
         dictationActive = true
     }
 
+    private fun isActiveDictationSession(sessionId: Long): Boolean {
+        return dictationActive && sessionId == dictationSessionId
+    }
+
     private fun stopDictationAndFinalize() {
+        if (!dictationActive) return
+        val finishingSessionId = dictationSessionId
+        dictationActive = false
+
         audio.stop()
         deepgram.finalizeAndClose()
 
@@ -314,10 +376,15 @@ class LightImeService : InputMethodService() {
             spellingMode = settings.spellingMode()
         )
 
-        currentInputConnection.finishComposingText()
-        if (processed.isNotBlank()) currentInputConnection.commitText("$processed ", 1)
+        currentInputConnection?.finishComposingText()
+        if (processed.isNotBlank()) currentInputConnection?.commitText("$processed ", 1)
+        dictatedFinal.setLength(0)
+        interimSegment = ""
+        lastFinalChunk = ""
         showStatus("Ready")
-        dictationActive = false
+
+        // Ignore delayed events from the socket that is currently closing.
+        if (dictationSessionId == finishingSessionId) dictationSessionId++
     }
 
     private fun showStatus(msg: String) {
@@ -371,10 +438,15 @@ class LightImeService : InputMethodService() {
         super.onStartInputView(info, restarting)
         val caps = settings.autoCapEnabled() && info?.inputType?.and(InputType.TYPE_TEXT_FLAG_CAP_SENTENCES) != 0
         upper = caps
-        digitBuffer.setLength(0)
-        multiTapBuffer.setLength(0)
-        clearMultiTapState()
-        updateSuggestions()
+        clearCompositionBuffers()
+        currentInputConnection?.finishComposingText()
+        stopBackspaceRepeat()
+    }
+
+    override fun onFinishInputView(finishingInput: Boolean) {
+        stopBackspaceRepeat()
+        stopDictationAndFinalize()
+        super.onFinishInputView(finishingInput)
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
@@ -386,6 +458,11 @@ class LightImeService : InputMethodService() {
             KeyEvent.KEYCODE_0,
             KeyEvent.KEYCODE_NUMPAD_0 -> {
                 commitWord(currentWord())
+                return true
+            }
+            KeyEvent.KEYCODE_1,
+            KeyEvent.KEYCODE_NUMPAD_1 -> {
+                commitPunctuation(".")
                 return true
             }
             KeyEvent.KEYCODE_2,
@@ -444,4 +521,8 @@ class LightImeService : InputMethodService() {
         else -> KeyEvent.KEYCODE_CALL
     }
 
+    companion object {
+        private const val BACKSPACE_INITIAL_REPEAT_DELAY_MS = 350L
+        private const val BACKSPACE_REPEAT_INTERVAL_MS = 60L
+    }
 }
