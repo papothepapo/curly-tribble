@@ -1,6 +1,6 @@
 # LightIME (T9 + Deepgram Streaming Dictation)
 
-LightIME is a lightweight Android IME designed for Android 8.1 Go class hardware. it supports blazing fast accurate (more accurate than whisperv3 large!!) speach to text using deepgram. deepgram offers 200 dollars worth of api credits which should last a very long time for casual texting usage.
+LightIME is a lightweight Android IME designed for Android 8.1 Go class hardware. it supports blazing fast accurate (more accurate than whisperv3 large!!) speech to text using deepgram. deepgram offers 200 dollars worth of api credits which should last a very long time for casual texting usage.
 
 ## Enable as default keyboard
 1. Open **Settings > System > Languages & input > Virtual keyboard**.
