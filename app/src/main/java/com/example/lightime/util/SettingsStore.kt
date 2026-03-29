@@ -14,6 +14,12 @@ class SettingsStore(context: Context) {
     fun autoCapEnabled(): Boolean = prefs.getBoolean("auto_cap", true)
     fun micHardwareKey(): String = prefs.getString("mic_hardware_key", "CALL") ?: "CALL"
     fun predictiveT9Enabled(): Boolean = prefs.getBoolean("t9_predictive", true)
+    fun backspaceHardwareKey(): String = prefs.getString("keymap_backspace", "DEL") ?: "DEL"
+    fun enterHardwareKey(): String = prefs.getString("keymap_enter", "ENTER") ?: "ENTER"
+    fun spaceHardwareKey(): String = prefs.getString("keymap_space", "KEY_0") ?: "KEY_0"
+    fun punctuationHardwareKey(): String = prefs.getString("keymap_period", "KEY_1") ?: "KEY_1"
+    fun shiftHardwareKey(): String = prefs.getString("keymap_shift", "POUND") ?: "POUND"
+    fun symbolHardwareKey(): String = prefs.getString("keymap_symbol", "STAR") ?: "STAR"
 
     fun keyterms(): List<String> = decodeList(prefs.getString("dg_keyterms", "") ?: "")
     fun correctionsMap(): Map<String, String> = decodeMap(prefs.getString("text_corrections", "") ?: "")

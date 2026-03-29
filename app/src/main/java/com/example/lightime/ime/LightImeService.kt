@@ -68,6 +68,7 @@ class LightImeService : InputMethodService() {
 
     override fun onCreate() {
         super.onCreate()
+        hasTouchscreen = packageManager.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN)
         settings = SettingsStore(applicationContext)
         dbHelper = DictionaryDbHelper(applicationContext)
         backgroundExecutor.execute {
@@ -83,7 +84,6 @@ class LightImeService : InputMethodService() {
     override fun onCreateInputView(): View {
         val root = LayoutInflater.from(this).inflate(R.layout.ime_view, null)
         statusLine = root.findViewById(R.id.statusLine)
-        hasTouchscreen = packageManager.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN)
 
         suggestionButtons = listOf(
             root.findViewById(R.id.suggestion1),
@@ -503,13 +503,11 @@ class LightImeService : InputMethodService() {
                 if (!dictationActive) startDictation() else stopDictationAndFinalize()
                 return true
             }
-            KeyEvent.KEYCODE_0,
-            KeyEvent.KEYCODE_NUMPAD_0 -> {
+            spaceHardwareKeyCode(), KeyEvent.KEYCODE_NUMPAD_0 -> {
                 commitWord(currentWord())
                 return true
             }
-            KeyEvent.KEYCODE_1,
-            KeyEvent.KEYCODE_NUMPAD_1 -> {
+            punctuationHardwareKeyCode(), KeyEvent.KEYCODE_NUMPAD_1 -> {
                 commitPunctuation(".")
                 return true
             }
@@ -553,12 +551,31 @@ class LightImeService : InputMethodService() {
                 onDigitKey('9', "wxyz")
                 return true
             }
-            KeyEvent.KEYCODE_DEL -> {
+            backspaceHardwareKeyCode() -> {
                 backspaceSingle()
+                return true
+            }
+            enterHardwareKeyCode() -> {
+                commitComposingWordIfAny()
+                currentInputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+                return true
+            }
+            shiftHardwareKeyCode() -> {
+                upper = !upper
+                showStatus(if (upper) "ABC" else "abc")
+                showComposingWord()
+                return true
+            }
+            symbolHardwareKeyCode() -> {
+                commitPunctuation(",")
                 return true
             }
         }
         return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onEvaluateInputViewShown(): Boolean {
+        return hasTouchscreen && super.onEvaluateInputViewShown()
     }
 
     private fun micHardwareKeyCode(): Int = when (settings.micHardwareKey()) {
@@ -567,6 +584,33 @@ class LightImeService : InputMethodService() {
         "VOLUME_UP" -> KeyEvent.KEYCODE_VOLUME_UP
         "VOLUME_DOWN" -> KeyEvent.KEYCODE_VOLUME_DOWN
         else -> KeyEvent.KEYCODE_CALL
+    }
+
+    private fun backspaceHardwareKeyCode(): Int = keyCodeFromSetting(settings.backspaceHardwareKey(), KeyEvent.KEYCODE_DEL)
+
+    private fun enterHardwareKeyCode(): Int = keyCodeFromSetting(settings.enterHardwareKey(), KeyEvent.KEYCODE_ENTER)
+
+    private fun spaceHardwareKeyCode(): Int = keyCodeFromSetting(settings.spaceHardwareKey(), KeyEvent.KEYCODE_0)
+
+    private fun punctuationHardwareKeyCode(): Int = keyCodeFromSetting(settings.punctuationHardwareKey(), KeyEvent.KEYCODE_1)
+
+    private fun shiftHardwareKeyCode(): Int = keyCodeFromSetting(settings.shiftHardwareKey(), KeyEvent.KEYCODE_POUND)
+
+    private fun symbolHardwareKeyCode(): Int = keyCodeFromSetting(settings.symbolHardwareKey(), KeyEvent.KEYCODE_STAR)
+
+    private fun keyCodeFromSetting(value: String, fallback: Int): Int = when (value) {
+        "KEY_0" -> KeyEvent.KEYCODE_0
+        "KEY_1" -> KeyEvent.KEYCODE_1
+        "STAR" -> KeyEvent.KEYCODE_STAR
+        "POUND" -> KeyEvent.KEYCODE_POUND
+        "DPAD_CENTER" -> KeyEvent.KEYCODE_DPAD_CENTER
+        "CALL" -> KeyEvent.KEYCODE_CALL
+        "ENDCALL" -> KeyEvent.KEYCODE_ENDCALL
+        "DEL" -> KeyEvent.KEYCODE_DEL
+        "CLEAR" -> KeyEvent.KEYCODE_CLEAR
+        "ENTER" -> KeyEvent.KEYCODE_ENTER
+        "SPACE" -> KeyEvent.KEYCODE_SPACE
+        else -> fallback
     }
 
     private fun hasRecordAudioPermission(): Boolean {
