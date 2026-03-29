@@ -62,16 +62,6 @@ class LightImeService : InputMethodService() {
         }
     }
 
-    private val mainHandler = Handler(Looper.getMainLooper())
-    private var backspaceRepeating = false
-    private val repeatingDeleteRunnable = object : Runnable {
-        override fun run() {
-            if (!backspaceRepeating) return
-            backspaceSingle()
-            mainHandler.postDelayed(this, BACKSPACE_REPEAT_INTERVAL_MS)
-        }
-    }
-
     override fun onCreate() {
         super.onCreate()
         settings = SettingsStore(applicationContext)
@@ -360,10 +350,6 @@ class LightImeService : InputMethodService() {
                 showStatus(message)
             }
         })
-    }
-
-    private fun isActiveDictationSession(sessionId: Long): Boolean {
-        return sessionId == dictationSessionId
     }
 
     private fun isActiveDictationSession(sessionId: Long): Boolean {
