@@ -36,6 +36,10 @@ class LightImeService : InputMethodService() {
     private var hasTouchscreen: Boolean = true
     private var showOnscreenT9Keypad: Boolean = true
 
+    private data class KeyBinding(val keyCode: Int, val longPress: Boolean)
+    private val pendingLongPressKeys = mutableSetOf<Int>()
+    private val consumedLongPressKeys = mutableSetOf<Int>()
+
     private val digitBuffer = StringBuilder()
     private val multiTapBuffer = StringBuilder()
     private var lastTapDigit: Char? = null
@@ -521,6 +525,8 @@ class LightImeService : InputMethodService() {
     override fun onFinishInputView(finishingInput: Boolean) {
         stopBackspaceRepeat()
         stopDictationAndFinalize()
+        pendingLongPressKeys.clear()
+        consumedLongPressKeys.clear()
         pendingFinalizeSessionId = null
         super.onFinishInputView(finishingInput)
     }
@@ -531,8 +537,33 @@ class LightImeService : InputMethodService() {
     }
 
     override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+        if (event?.repeatCount == 0 && hasLongPressBindingForKey(keyCode)) {
+            pendingLongPressKeys.add(keyCode)
+            consumedLongPressKeys.remove(keyCode)
+            return true
+        }
+        if (pendingLongPressKeys.contains(keyCode)) return true
+        return if (handleShortPressKey(keyCode)) true else super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyLongPress(keyCode: Int, event: KeyEvent?): Boolean {
+        val consumed = handleLongPressKey(keyCode)
+        if (consumed) consumedLongPressKeys.add(keyCode)
+        return if (consumed) true else super.onKeyLongPress(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
+        if (pendingLongPressKeys.remove(keyCode)) {
+            val wasLongPress = consumedLongPressKeys.remove(keyCode)
+            if (wasLongPress) return true
+            return if (handleShortPressKey(keyCode)) true else super.onKeyUp(keyCode, event)
+        }
+        return super.onKeyUp(keyCode, event)
+    }
+
+    private fun handleShortPressKey(keyCode: Int): Boolean {
         when (keyCode) {
-            micHardwareKeyCode() -> {
+            bindingKeyCode(settings.micHardwareKey()) -> {
                 if (!dictationActive) startDictation() else stopDictationAndFinalize()
                 return true
             }
@@ -594,7 +625,7 @@ class LightImeService : InputMethodService() {
             }
         }
 
-        if (keyCode == spaceHardwareKeyCode()) {
+        if (matchesBinding(settings.spaceHardwareKey(), keyCode, longPress = false)) {
             if (inputMode == InputMode.NUMERIC) {
                 currentInputConnection?.commitText("0", 1)
             } else {
@@ -602,7 +633,7 @@ class LightImeService : InputMethodService() {
             }
             return true
         }
-        if (keyCode == punctuationHardwareKeyCode()) {
+        if (matchesBinding(settings.punctuationHardwareKey(), keyCode, longPress = false)) {
             if (inputMode == InputMode.NUMERIC) {
                 currentInputConnection?.commitText("1", 1)
             } else {
@@ -610,63 +641,117 @@ class LightImeService : InputMethodService() {
             }
             return true
         }
-        if (keyCode == backspaceHardwareKeyCode()) {
+        if (matchesBinding(settings.backspaceHardwareKey(), keyCode, longPress = false)) {
             backspaceSingle()
             return true
         }
-        if (keyCode == enterHardwareKeyCode()) {
+        if (matchesBinding(settings.enterHardwareKey(), keyCode, longPress = false)) {
             commitComposingWordIfAny()
             currentInputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
             return true
         }
-        if (keyCode == shiftHardwareKeyCode()) {
+        if (matchesBinding(settings.shiftHardwareKey(), keyCode, longPress = false)) {
             onHashShortPress()
             return true
         }
-        if (keyCode == symbolHardwareKeyCode()) {
+        if (matchesBinding(settings.symbolHardwareKey(), keyCode, longPress = false)) {
             commitPunctuation(",")
             return true
         }
-        return super.onKeyDown(keyCode, event)
-    }
-
-    override fun onKeyLongPress(keyCode: Int, event: KeyEvent?): Boolean {
-        if (keyCode == shiftHardwareKeyCode()) {
-            if (handleShiftLongPressRemap()) return true
-            onHashLongPress()
+        if (matchesBinding(settings.modeCycleHardwareKey(), keyCode, longPress = false)) {
+            cycleInputMode()
             return true
         }
-        return super.onKeyLongPress(keyCode, event)
+        if (matchesBinding(settings.t9ToggleHardwareKey(), keyCode, longPress = false)) {
+            togglePredictiveT9()
+            return true
+        }
+
+        return false
+    }
+
+    private fun handleLongPressKey(keyCode: Int): Boolean {
+        if (matchesBinding(settings.micHardwareKey(), keyCode, longPress = true)) {
+            if (!dictationActive) startDictation() else stopDictationAndFinalize()
+            return true
+        }
+        if (matchesBinding(settings.backspaceHardwareKey(), keyCode, longPress = true)) {
+            backspaceSingle()
+            return true
+        }
+        if (matchesBinding(settings.enterHardwareKey(), keyCode, longPress = true)) {
+            commitComposingWordIfAny()
+            currentInputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+            return true
+        }
+        if (matchesBinding(settings.spaceHardwareKey(), keyCode, longPress = true)) {
+            if (inputMode == InputMode.NUMERIC) currentInputConnection?.commitText("0", 1) else commitWord(currentWord())
+            return true
+        }
+        if (matchesBinding(settings.punctuationHardwareKey(), keyCode, longPress = true)) {
+            if (inputMode == InputMode.NUMERIC) currentInputConnection?.commitText("1", 1) else commitPunctuation(".")
+            return true
+        }
+        if (matchesBinding(settings.shiftHardwareKey(), keyCode, longPress = true)) {
+            onHashShortPress()
+            return true
+        }
+        if (matchesBinding(settings.symbolHardwareKey(), keyCode, longPress = true)) {
+            commitPunctuation(",")
+            return true
+        }
+        if (matchesBinding(settings.modeCycleHardwareKey(), keyCode, longPress = true)) {
+            cycleInputMode()
+            return true
+        }
+        if (matchesBinding(settings.t9ToggleHardwareKey(), keyCode, longPress = true)) {
+            togglePredictiveT9()
+            return true
+        }
+        return false
     }
 
     override fun onEvaluateInputViewShown(): Boolean {
         return hasTouchscreen && super.onEvaluateInputViewShown()
     }
 
-    private fun micHardwareKeyCode(): Int = when (settings.micHardwareKey()) {
-        "SEARCH" -> KeyEvent.KEYCODE_SEARCH
-        "CAMERA" -> KeyEvent.KEYCODE_CAMERA
-        "VOLUME_UP" -> KeyEvent.KEYCODE_VOLUME_UP
-        "VOLUME_DOWN" -> KeyEvent.KEYCODE_VOLUME_DOWN
-        else -> KeyEvent.KEYCODE_CALL
+    private fun hasLongPressBindingForKey(keyCode: Int): Boolean {
+        val bindings = listOf(
+            parseBinding(settings.micHardwareKey(), KeyEvent.KEYCODE_CALL),
+            parseBinding(settings.backspaceHardwareKey(), KeyEvent.KEYCODE_DEL),
+            parseBinding(settings.enterHardwareKey(), KeyEvent.KEYCODE_ENTER),
+            parseBinding(settings.spaceHardwareKey(), KeyEvent.KEYCODE_0),
+            parseBinding(settings.punctuationHardwareKey(), KeyEvent.KEYCODE_1),
+            parseBinding(settings.shiftHardwareKey(), KeyEvent.KEYCODE_POUND),
+            parseBinding(settings.symbolHardwareKey(), KeyEvent.KEYCODE_STAR),
+            parseBinding(settings.modeCycleHardwareKey(), KeyEvent.KEYCODE_STAR),
+            parseBinding(settings.t9ToggleHardwareKey(), KeyEvent.KEYCODE_POUND)
+        )
+        return bindings.any { it.longPress && it.keyCode == keyCode }
     }
 
-    private fun backspaceHardwareKeyCode(): Int = keyCodeFromSetting(settings.backspaceHardwareKey(), KeyEvent.KEYCODE_DEL)
+    private fun matchesBinding(rawValue: String, keyCode: Int, longPress: Boolean): Boolean {
+        val binding = parseBinding(rawValue, KeyEvent.KEYCODE_UNKNOWN)
+        return binding.longPress == longPress && binding.keyCode == keyCode
+    }
 
-    private fun enterHardwareKeyCode(): Int = keyCodeFromSetting(settings.enterHardwareKey(), KeyEvent.KEYCODE_ENTER)
+    private fun parseBinding(value: String, fallback: Int): KeyBinding {
+        val isLongPress = value.startsWith("LP_")
+        val raw = if (isLongPress) value.removePrefix("LP_") else value
+        return KeyBinding(bindingKeyCode(raw, fallback), isLongPress)
+    }
 
-    private fun spaceHardwareKeyCode(): Int = keyCodeFromSetting(settings.spaceHardwareKey(), KeyEvent.KEYCODE_0)
-
-    private fun punctuationHardwareKeyCode(): Int = keyCodeFromSetting(settings.punctuationHardwareKey(), KeyEvent.KEYCODE_1)
-
-    private fun shiftHardwareKeyCode(): Int = keyCodeFromSetting(settings.shiftHardwareKey(), KeyEvent.KEYCODE_POUND)
-
-    private fun symbolHardwareKeyCode(): Int = keyCodeFromSetting(settings.symbolHardwareKey(), KeyEvent.KEYCODE_STAR)
-
-    private fun keyCodeFromSetting(value: String, fallback: Int): Int = when (value) {
-        "SHIFT_LONG_PRESS" -> KeyEvent.KEYCODE_UNKNOWN
+    private fun bindingKeyCode(value: String, fallback: Int = KeyEvent.KEYCODE_UNKNOWN): Int = when (value) {
         "KEY_0" -> KeyEvent.KEYCODE_0
         "KEY_1" -> KeyEvent.KEYCODE_1
+        "KEY_2" -> KeyEvent.KEYCODE_2
+        "KEY_3" -> KeyEvent.KEYCODE_3
+        "KEY_4" -> KeyEvent.KEYCODE_4
+        "KEY_5" -> KeyEvent.KEYCODE_5
+        "KEY_6" -> KeyEvent.KEYCODE_6
+        "KEY_7" -> KeyEvent.KEYCODE_7
+        "KEY_8" -> KeyEvent.KEYCODE_8
+        "KEY_9" -> KeyEvent.KEYCODE_9
         "STAR" -> KeyEvent.KEYCODE_STAR
         "POUND" -> KeyEvent.KEYCODE_POUND
         "DPAD_CENTER" -> KeyEvent.KEYCODE_DPAD_CENTER
@@ -676,42 +761,11 @@ class LightImeService : InputMethodService() {
         "CLEAR" -> KeyEvent.KEYCODE_CLEAR
         "ENTER" -> KeyEvent.KEYCODE_ENTER
         "SPACE" -> KeyEvent.KEYCODE_SPACE
+        "SEARCH" -> KeyEvent.KEYCODE_SEARCH
+        "CAMERA" -> KeyEvent.KEYCODE_CAMERA
+        "VOLUME_UP" -> KeyEvent.KEYCODE_VOLUME_UP
+        "VOLUME_DOWN" -> KeyEvent.KEYCODE_VOLUME_DOWN
         else -> fallback
-    }
-
-    private fun isShiftLongPressMapped(value: String): Boolean = value == "SHIFT_LONG_PRESS"
-
-    private fun handleShiftLongPressRemap(): Boolean {
-        if (isShiftLongPressMapped(settings.backspaceHardwareKey())) {
-            backspaceSingle()
-            return true
-        }
-        if (isShiftLongPressMapped(settings.enterHardwareKey())) {
-            commitComposingWordIfAny()
-            currentInputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
-            return true
-        }
-        if (isShiftLongPressMapped(settings.spaceHardwareKey())) {
-            if (inputMode == InputMode.NUMERIC) {
-                currentInputConnection?.commitText("0", 1)
-            } else {
-                commitWord(currentWord())
-            }
-            return true
-        }
-        if (isShiftLongPressMapped(settings.punctuationHardwareKey())) {
-            if (inputMode == InputMode.NUMERIC) {
-                currentInputConnection?.commitText("1", 1)
-            } else {
-                commitPunctuation(".")
-            }
-            return true
-        }
-        if (isShiftLongPressMapped(settings.symbolHardwareKey())) {
-            commitPunctuation(",")
-            return true
-        }
-        return false
     }
 
     private fun hasRecordAudioPermission(): Boolean {
@@ -732,6 +786,50 @@ class LightImeService : InputMethodService() {
         inputMode = if (inputMode == InputMode.NUMERIC) InputMode.LOWER else InputMode.NUMERIC
         clearCompositionBuffers()
         showInputModeStatus()
+    }
+
+    private fun cycleInputMode() {
+        when {
+            settings.predictiveT9Enabled() -> {
+                settings.setPredictiveT9Enabled(false)
+                inputMode = InputMode.UPPER
+                clearCompositionBuffers()
+                showStatus("ABC")
+            }
+            inputMode == InputMode.UPPER -> {
+                inputMode = InputMode.LOWER
+                clearCompositionBuffers()
+                showStatus("abc")
+            }
+            inputMode == InputMode.LOWER -> {
+                inputMode = InputMode.NUMERIC
+                clearCompositionBuffers()
+                showStatus("123")
+            }
+            else -> {
+                settings.setPredictiveT9Enabled(true)
+                inputMode = InputMode.LOWER
+                clearCompositionBuffers()
+                showStatus("T9")
+            }
+        }
+        updateSuggestions()
+        showComposingWord()
+    }
+
+    private fun togglePredictiveT9() {
+        val enabled = !settings.predictiveT9Enabled()
+        settings.setPredictiveT9Enabled(enabled)
+        clearCompositionBuffers()
+        if (enabled) {
+            if (inputMode == InputMode.NUMERIC) inputMode = InputMode.LOWER
+            showStatus("Predictive T9 on")
+        } else {
+            if (inputMode == InputMode.NUMERIC) inputMode = InputMode.LOWER
+            showStatus(if (inputMode == InputMode.UPPER) "ABC" else "abc")
+        }
+        updateSuggestions()
+        showComposingWord()
     }
 
     private fun showInputModeStatus() {

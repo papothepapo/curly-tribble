@@ -44,8 +44,8 @@
     <ListPreference
         android:key="mic_hardware_key"
         android:defaultValue="CALL"
-        android:entries="@array/mic_key_labels"
-        android:entryValues="@array/mic_key_values"
+        android:entries="@array/hardware_key_labels_with_long_press"
+        android:entryValues="@array/hardware_key_values_with_long_press"
         android:title="Mic hardware button" />
 
     <PreferenceCategory
@@ -53,39 +53,51 @@
         <ListPreference
             android:key="keymap_backspace"
             android:defaultValue="DEL"
-            android:entries="@array/keymap_key_labels_with_long_press"
-            android:entryValues="@array/keymap_key_values_with_long_press"
+            android:entries="@array/hardware_key_labels_with_long_press"
+            android:entryValues="@array/hardware_key_values_with_long_press"
             android:title="Backspace action key" />
         <ListPreference
             android:key="keymap_enter"
             android:defaultValue="ENTER"
-            android:entries="@array/keymap_key_labels_with_long_press"
-            android:entryValues="@array/keymap_key_values_with_long_press"
+            android:entries="@array/hardware_key_labels_with_long_press"
+            android:entryValues="@array/hardware_key_values_with_long_press"
             android:title="Enter action key" />
         <ListPreference
             android:key="keymap_space"
             android:defaultValue="KEY_0"
-            android:entries="@array/keymap_key_labels_with_long_press"
-            android:entryValues="@array/keymap_key_values_with_long_press"
+            android:entries="@array/hardware_key_labels_with_long_press"
+            android:entryValues="@array/hardware_key_values_with_long_press"
             android:title="Space / commit action key" />
         <ListPreference
             android:key="keymap_period"
             android:defaultValue="KEY_1"
-            android:entries="@array/keymap_key_labels_with_long_press"
-            android:entryValues="@array/keymap_key_values_with_long_press"
+            android:entries="@array/hardware_key_labels_with_long_press"
+            android:entryValues="@array/hardware_key_values_with_long_press"
             android:title="Period action key" />
         <ListPreference
             android:key="keymap_shift"
             android:defaultValue="POUND"
-            android:entries="@array/keymap_key_labels"
-            android:entryValues="@array/keymap_key_values"
+            android:entries="@array/hardware_key_labels_with_long_press"
+            android:entryValues="@array/hardware_key_values_with_long_press"
             android:title="Shift (ABC/abc) action key" />
         <ListPreference
             android:key="keymap_symbol"
             android:defaultValue="STAR"
-            android:entries="@array/keymap_key_labels_with_long_press"
-            android:entryValues="@array/keymap_key_values_with_long_press"
+            android:entries="@array/hardware_key_labels_with_long_press"
+            android:entryValues="@array/hardware_key_values_with_long_press"
             android:title="Comma/symbol action key" />
+        <ListPreference
+            android:key="keymap_mode_cycle"
+            android:defaultValue="LP_STAR"
+            android:entries="@array/hardware_key_labels_with_long_press"
+            android:entryValues="@array/hardware_key_values_with_long_press"
+            android:title="Mode cycle key (T9/ABC/abc/123)" />
+        <ListPreference
+            android:key="keymap_t9_toggle"
+            android:defaultValue="LP_POUND"
+            android:entries="@array/hardware_key_labels_with_long_press"
+            android:entryValues="@array/hardware_key_values_with_long_press"
+            android:title="Toggle predictive T9 key" />
     </PreferenceCategory>
     <EditTextPreference
         android:key="dg_keyterms"

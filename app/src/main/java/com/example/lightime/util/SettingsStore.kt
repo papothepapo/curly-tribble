@@ -14,6 +14,9 @@ class SettingsStore(context: Context) {
     fun autoCapEnabled(): Boolean = prefs.getBoolean("auto_cap", true)
     fun micHardwareKey(): String = prefs.getString("mic_hardware_key", "CALL") ?: "CALL"
     fun predictiveT9Enabled(): Boolean = prefs.getBoolean("t9_predictive", true)
+    fun setPredictiveT9Enabled(enabled: Boolean) {
+        prefs.edit().putBoolean("t9_predictive", enabled).apply()
+    }
     fun forceHideOnscreenT9Keypad(): Boolean = prefs.getBoolean("force_hide_onscreen_t9_keypad", false)
     fun backspaceHardwareKey(): String = prefs.getString("keymap_backspace", "DEL") ?: "DEL"
     fun enterHardwareKey(): String = prefs.getString("keymap_enter", "ENTER") ?: "ENTER"
@@ -21,6 +24,8 @@ class SettingsStore(context: Context) {
     fun punctuationHardwareKey(): String = prefs.getString("keymap_period", "KEY_1") ?: "KEY_1"
     fun shiftHardwareKey(): String = prefs.getString("keymap_shift", "POUND") ?: "POUND"
     fun symbolHardwareKey(): String = prefs.getString("keymap_symbol", "STAR") ?: "STAR"
+    fun modeCycleHardwareKey(): String = prefs.getString("keymap_mode_cycle", "LP_STAR") ?: "LP_STAR"
+    fun t9ToggleHardwareKey(): String = prefs.getString("keymap_t9_toggle", "LP_POUND") ?: "LP_POUND"
 
     fun keyterms(): List<String> = decodeList(prefs.getString("dg_keyterms", "") ?: "")
     fun correctionsMap(): Map<String, String> = decodeMap(prefs.getString("text_corrections", "") ?: "")
