@@ -297,44 +297,52 @@ class LightImeService : InputMethodService() {
             keyterms = settings.keyterms(),
             listener = object : DeepgramStreamingClient.Listener {
                 override fun onInterim(text: String) {
-                    if (!isActiveDictationSession(sessionId)) return
-                    interimSegment = text
-                    if (settings.interimEnabled()) {
-                        currentInputConnection?.setComposingText((dictatedFinal.toString() + " " + interimSegment).trim(), 1)
+                    mainHandler.post {
+                        if (!isActiveDictationSession(sessionId)) return@post
+                        interimSegment = text
+                        if (settings.interimEnabled()) {
+                            currentInputConnection?.setComposingText((dictatedFinal.toString() + " " + interimSegment).trim(), 1)
+                        }
                     }
                 }
 
                 override fun onFinalChunk(text: String, speechFinal: Boolean) {
-                    if (!isActiveDictationSession(sessionId)) return
-                    val normalized = text.trim()
-                    if (normalized.isBlank()) return
-                    if (normalized == lastFinalChunk) return
+                    mainHandler.post {
+                        if (!isActiveDictationSession(sessionId)) return@post
+                        val normalized = text.trim()
+                        if (normalized.isBlank()) return@post
+                        if (normalized == lastFinalChunk) return@post
 
-                    val appendSegment = when {
-                        lastFinalChunk.isNotBlank() && normalized.startsWith(lastFinalChunk) -> normalized.removePrefix(lastFinalChunk).trim()
-                        else -> normalized
-                    }
-                    if (appendSegment.isBlank()) {
+                        val appendSegment = when {
+                            lastFinalChunk.isNotBlank() && normalized.startsWith(lastFinalChunk) -> normalized.removePrefix(lastFinalChunk).trim()
+                            else -> normalized
+                        }
+                        if (appendSegment.isBlank()) {
+                            lastFinalChunk = normalized
+                            return@post
+                        }
+
+                        if (dictatedFinal.isNotEmpty()) dictatedFinal.append(' ')
+                        dictatedFinal.append(appendSegment)
+                        interimSegment = ""
                         lastFinalChunk = normalized
-                        return
+                        currentInputConnection?.setComposingText(dictatedFinal.toString(), 1)
+                        if (speechFinal) dictatedFinal.append(' ')
                     }
-
-                    if (dictatedFinal.isNotEmpty()) dictatedFinal.append(' ')
-                    dictatedFinal.append(appendSegment)
-                    interimSegment = ""
-                    lastFinalChunk = normalized
-                    currentInputConnection?.setComposingText(dictatedFinal.toString(), 1)
-                    if (speechFinal) dictatedFinal.append(' ')
                 }
 
                 override fun onError(message: String) {
-                    if (!isActiveDictationSession(sessionId)) return
-                    showStatus(message)
+                    mainHandler.post {
+                        if (!isActiveDictationSession(sessionId)) return@post
+                        showStatus(message)
+                    }
                 }
 
                 override fun onClosed() {
-                    if (!isActiveDictationSession(sessionId)) return
-                    showStatus("Dictation stopped")
+                    mainHandler.post {
+                        if (!isActiveDictationSession(sessionId)) return@post
+                        showStatus("Dictation stopped")
+                    }
                 }
             }
         )
