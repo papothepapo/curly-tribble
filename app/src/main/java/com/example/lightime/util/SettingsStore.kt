@@ -25,6 +25,7 @@ class SettingsStore(context: Context) {
     fun punctuationHardwareKey(): String = prefs.getString("keymap_period", "KEY_1") ?: "KEY_1"
     fun symbolHardwareKey(): String = prefs.getString("keymap_symbol", "STAR") ?: "STAR"
     fun modeCycleHardwareKey(): String = prefs.getString("keymap_mode_cycle", "LP_STAR") ?: "LP_STAR"
+    fun customDictionaryWords(): List<String> = decodeList(prefs.getString("custom_dictionary_words", "") ?: "")
 
     fun keyterms(): List<String> = decodeList(prefs.getString("dg_keyterms", "") ?: "")
     fun correctionsMap(): Map<String, String> = decodeMap(prefs.getString("text_corrections", "") ?: "")

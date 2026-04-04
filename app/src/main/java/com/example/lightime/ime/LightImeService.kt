@@ -1,9 +1,12 @@
 package com.example.lightime.ime
 
 import android.Manifest
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.inputmethodservice.InputMethodService
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.text.InputType
@@ -22,6 +25,8 @@ import com.example.lightime.stt.AudioRecorderManager
 import com.example.lightime.stt.DeepgramStreamingClient
 import com.example.lightime.t9.T9Engine
 import com.example.lightime.util.SettingsStore
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import java.util.concurrent.Executors
 
@@ -31,10 +36,15 @@ class LightImeService : InputMethodService() {
     private var t9Engine: T9Engine? = null
 
     private var statusLine: TextView? = null
+    private var streamingIndicator: View? = null
+    private var streamingLabel: TextView? = null
+    private var dictationButton: Button? = null
     private var suggestionButtons: List<Button> = emptyList()
     private var currentSuggestions: List<String> = emptyList()
     private var hasTouchscreen: Boolean = true
     private var showOnscreenT9Keypad: Boolean = true
+    private var lastStatusMessage = "Ready"
+    private var dictationUiState = DictationUiState.IDLE
 
     private data class KeyBinding(val keyCode: Int, val longPress: Boolean)
     private val pendingLongPressKeys = mutableSetOf<Int>()
@@ -59,6 +69,8 @@ class LightImeService : InputMethodService() {
     private var interimSegment = ""
     private var lastFinalChunk = ""
     private var pendingFinalizeSessionId: Long? = null
+    private var committedDictationSessionId: Long? = null
+    private var lastCustomWordsSignature = Int.MIN_VALUE
     private val backgroundExecutor = Executors.newSingleThreadExecutor()
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -76,8 +88,11 @@ class LightImeService : InputMethodService() {
         hasTouchscreen = packageManager.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN)
         settings = SettingsStore(applicationContext)
         dbHelper = DictionaryDbHelper(applicationContext)
+        createNotificationChannel()
         backgroundExecutor.execute {
             dbHelper.ensureSeedLoaded()
+            dbHelper.replaceCustomWords(settings.customDictionaryWords())
+            lastCustomWordsSignature = settings.customDictionaryWords().joinToString("\n").hashCode()
             t9Engine = T9Engine(dbHelper.readableDatabase)
             mainHandler.post {
                 updateSuggestions()
@@ -89,6 +104,8 @@ class LightImeService : InputMethodService() {
     override fun onCreateInputView(): View {
         val root = LayoutInflater.from(this).inflate(R.layout.ime_view, null)
         statusLine = root.findViewById(R.id.statusLine)
+        streamingIndicator = root.findViewById(R.id.streamingIndicator)
+        streamingLabel = root.findViewById(R.id.streamingLabel)
 
         suggestionButtons = listOf(
             root.findViewById(R.id.suggestion1),
@@ -150,7 +167,7 @@ class LightImeService : InputMethodService() {
         root.findViewById<Button>(R.id.keyStar).setOnClickListener { commitPunctuation(",") }
         root.findViewById<Button>(R.id.keyEnter).setOnClickListener {
             commitComposingWordIfAny()
-            currentInputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
         }
 
         root.findViewById<Button>(R.id.keyBackspace).setOnTouchListener { _, event ->
@@ -169,15 +186,18 @@ class LightImeService : InputMethodService() {
             }
         }
 
-        root.findViewById<Button>(R.id.keyDictation).apply {
-            visibility = if (settings.sttEnabled()) View.VISIBLE else View.GONE
-        }.setOnTouchListener { _, event ->
+        val keyDictation = root.findViewById<Button>(R.id.keyDictation)
+        dictationButton = keyDictation
+        keyDictation.visibility = if (settings.sttEnabled()) View.VISIBLE else View.GONE
+        keyDictation.setOnTouchListener { _, event ->
             when (event.action) {
                 MotionEvent.ACTION_DOWN -> startDictation()
                 MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> stopDictationAndFinalize()
             }
             true
         }
+        renderDictationUi()
+        showStatus(lastStatusMessage)
 
         return root
     }
@@ -224,7 +244,7 @@ class LightImeService : InputMethodService() {
         val suggestion = topSuggestion()
         val displayText = when {
             suggestion.isNotBlank() -> displayWithCase(suggestion)
-            showOnscreenT9Keypad -> digitBuffer.toString()
+            digitBuffer.isNotEmpty() -> digitBuffer.toString()
             else -> ""
         }
         currentInputConnection?.setComposingText(displayText, 1)
@@ -271,7 +291,7 @@ class LightImeService : InputMethodService() {
             return
         }
         ic.commitText("$word ", 1)
-        dbHelper.upsertUserWord(word.lowercase())
+        if (shouldLearnWord(word)) learnWord(word)
         clearCompositionBuffers()
     }
 
@@ -280,7 +300,7 @@ class LightImeService : InputMethodService() {
         val word = currentWord()
         if (word.isNotBlank()) {
             ic.commitText(word, 1)
-            dbHelper.upsertUserWord(word.lowercase())
+            if (shouldLearnWord(word)) learnWord(word)
         }
         ic.commitText(mark, 1)
         clearCompositionBuffers()
@@ -299,8 +319,23 @@ class LightImeService : InputMethodService() {
         if (word.isBlank()) return
         val ic = currentInputConnection ?: return
         ic.commitText(word, 1)
-        dbHelper.upsertUserWord(word.lowercase())
+        if (shouldLearnWord(word)) learnWord(word)
         clearCompositionBuffers()
+    }
+
+    private fun learnWord(word: String) {
+        val normalized = DictionaryDbHelper.normalizeWord(word)
+        if (normalized.isBlank()) return
+        dbHelper.upsertUserWord(normalized)
+        t9Engine?.invalidateCache()
+    }
+
+    private fun shouldLearnWord(word: String): Boolean {
+        if (word.isBlank()) return false
+        val normalized = DictionaryDbHelper.normalizeWord(word)
+        if (normalized.isBlank()) return false
+        if (inputMode != InputMode.T9) return true
+        return topSuggestion().isNotBlank()
     }
 
     private fun backspaceSingle() {
@@ -350,9 +385,12 @@ class LightImeService : InputMethodService() {
         interimSegment = ""
         lastFinalChunk = ""
         pendingFinalizeSessionId = null
+        committedDictationSessionId = null
         val sessionId = ++dictationSessionId
         dictationActive = true
-        showStatus("Listening…")
+        deepgram.close()
+        setDictationUiState(DictationUiState.LISTENING)
+        showStatus("Streaming audio…")
 
         deepgram.connect(
             apiKey = apiKey,
@@ -393,16 +431,14 @@ class LightImeService : InputMethodService() {
                 }
 
                 override fun onError(message: String) {
-                    mainHandler.post {
-                        if (!canAcceptDictationCallbacks(sessionId)) return@post
-                        showStatus(message)
-                    }
+                    abortDictation(sessionId, message)
                 }
 
                 override fun onClosed() {
                     mainHandler.post {
                         if (!canAcceptDictationCallbacks(sessionId)) return@post
-                        showStatus("Dictation stopped")
+                        if (pendingFinalizeSessionId == sessionId) return@post
+                        finishDictationUi("Dictation stopped")
                     }
                 }
             }
@@ -415,8 +451,7 @@ class LightImeService : InputMethodService() {
             }
 
             override fun onError(message: String) {
-                if (!canAcceptDictationCallbacks(sessionId)) return
-                showStatus(message)
+                abortDictation(sessionId, message)
             }
         })
     }
@@ -437,17 +472,42 @@ class LightImeService : InputMethodService() {
         pendingFinalizeSessionId = finishingSessionId
 
         audio.stop()
+        setDictationUiState(DictationUiState.FINALIZING)
+        showStatus("Finishing dictation…")
         deepgram.finalize()
 
         mainHandler.postDelayed({
             if (pendingFinalizeSessionId != finishingSessionId) return@postDelayed
             pendingFinalizeSessionId = null
             deepgram.close()
-            commitDictationResult()
+            commitDictationResult(sessionId = finishingSessionId)
         }, DICTATION_FINALIZE_GRACE_MS)
     }
 
-    private fun commitDictationResult() {
+    private fun abortDictation(sessionId: Long, message: String) {
+        mainHandler.post {
+            if (!canAcceptDictationCallbacks(sessionId)) return@post
+            dictationActive = false
+            pendingFinalizeSessionId = null
+            audio.stop()
+            deepgram.close()
+            if (dictatedFinal.isNotEmpty() || interimSegment.isNotBlank()) {
+                commitDictationResult(statusMessage = message, sessionId = sessionId)
+            } else {
+                resetDictationBuffers()
+                finishDictationUi(message)
+                currentInputConnection?.finishComposingText()
+            }
+        }
+    }
+
+    private fun commitDictationResult(statusMessage: String = "Ready", sessionId: Long = dictationSessionId) {
+        if (committedDictationSessionId == sessionId) {
+            finishDictationUi(statusMessage)
+            return
+        }
+        committedDictationSessionId = sessionId
+
         val interimTail = suffixDelta(dictatedFinal.toString().trim(), interimSegment.trim())
         val finalText = buildString {
             append(dictatedFinal.toString().trim())
@@ -464,13 +524,12 @@ class LightImeService : InputMethodService() {
         )
 
         if (processed.isNotBlank()) currentInputConnection?.commitText("$processed ", 1)
-        dictatedFinal.setLength(0)
-        interimSegment = ""
-        lastFinalChunk = ""
-        showStatus("Ready")
+        resetDictationBuffers()
+        finishDictationUi(statusMessage)
     }
 
     private fun showStatus(msg: String) {
+        lastStatusMessage = msg
         statusLine?.post { statusLine?.text = msg }
     }
 
@@ -508,7 +567,8 @@ class LightImeService : InputMethodService() {
     private fun displayWithCase(text: String): String {
         if (text.isBlank()) return text
         return when (inputMode) {
-            InputMode.UPPER -> text.replaceFirstChar { it.uppercaseChar() }
+            InputMode.UPPER -> text.uppercase()
+            InputMode.LOWER -> text.lowercase()
             else -> text
         }
     }
@@ -530,6 +590,8 @@ class LightImeService : InputMethodService() {
         clearCompositionBuffers()
         currentInputConnection?.finishComposingText()
         stopBackspaceRepeat()
+        syncCustomWordsIfNeeded()
+        renderDictationUi()
     }
 
     override fun onFinishInputView(finishingInput: Boolean) {
@@ -537,11 +599,14 @@ class LightImeService : InputMethodService() {
         stopDictationAndFinalize()
         pendingLongPressKeys.clear()
         consumedLongPressKeys.clear()
-        pendingFinalizeSessionId = null
         super.onFinishInputView(finishingInput)
     }
 
     override fun onDestroy() {
+        audio.stop()
+        deepgram.close()
+        cancelStreamingNotification()
+        dbHelper.close()
         backgroundExecutor.shutdownNow()
         super.onDestroy()
     }
@@ -658,7 +723,7 @@ class LightImeService : InputMethodService() {
         }
         if (matchesBinding(settings.enterHardwareKey(), keyCode, longPress = false)) {
             commitComposingWordIfAny()
-            currentInputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
             return true
         }
         if (matchesBinding(settings.symbolHardwareKey(), keyCode, longPress = false)) {
@@ -685,7 +750,7 @@ class LightImeService : InputMethodService() {
         }
         if (matchesBinding(settings.enterHardwareKey(), keyCode, longPress = true)) {
             commitComposingWordIfAny()
-            currentInputConnection.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
+            currentInputConnection?.sendKeyEvent(KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_ENTER))
             return true
         }
         if (matchesBinding(settings.spaceHardwareKey(), keyCode, longPress = true)) {
@@ -708,7 +773,7 @@ class LightImeService : InputMethodService() {
     }
 
     override fun onEvaluateInputViewShown(): Boolean {
-        return hasTouchscreen && super.onEvaluateInputViewShown()
+        return if (hasTouchscreen) super.onEvaluateInputViewShown() else true
     }
 
     private fun hasLongPressBindingForKey(keyCode: Int): Boolean {
@@ -826,10 +891,107 @@ class LightImeService : InputMethodService() {
         return current
     }
 
+    private fun resetDictationBuffers() {
+        dictatedFinal.setLength(0)
+        interimSegment = ""
+        lastFinalChunk = ""
+    }
+
+    private fun finishDictationUi(statusMessage: String) {
+        setDictationUiState(DictationUiState.IDLE)
+        showStatus(statusMessage)
+    }
+
+    private fun syncCustomWordsIfNeeded() {
+        val customWords = settings.customDictionaryWords()
+        val signature = customWords.joinToString("\n").hashCode()
+        if (signature == lastCustomWordsSignature) return
+        backgroundExecutor.execute {
+            dbHelper.replaceCustomWords(customWords)
+            t9Engine?.invalidateCache()
+            lastCustomWordsSignature = signature
+            mainHandler.post {
+                updateSuggestions()
+                showComposingWord()
+            }
+        }
+    }
+
+    private fun setDictationUiState(state: DictationUiState) {
+        dictationUiState = state
+        renderDictationUi()
+    }
+
+    private fun renderDictationUi() {
+        val state = dictationUiState
+        val indicatorVisible = state != DictationUiState.IDLE
+        streamingIndicator?.visibility = if (indicatorVisible) View.VISIBLE else View.GONE
+        streamingLabel?.text = when (state) {
+            DictationUiState.IDLE -> ""
+            DictationUiState.LISTENING -> "Streaming audio to Deepgram"
+            DictationUiState.FINALIZING -> "Finishing speech capture"
+        }
+        dictationButton?.text = when (state) {
+            DictationUiState.IDLE -> "🎤 Hold"
+            DictationUiState.LISTENING -> "● Live"
+            DictationUiState.FINALIZING -> "⏳ Wait"
+        }
+        updateStreamingNotification(state)
+    }
+
+    private fun createNotificationChannel() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val manager = getSystemService(NotificationManager::class.java) ?: return
+        val channel = NotificationChannel(
+            STREAMING_CHANNEL_ID,
+            "LightIME dictation",
+            NotificationManager.IMPORTANCE_LOW
+        ).apply {
+            description = "Shows when LightIME is actively streaming microphone audio."
+            setShowBadge(false)
+        }
+        manager.createNotificationChannel(channel)
+    }
+
+    private fun updateStreamingNotification(state: DictationUiState) {
+        if (state == DictationUiState.IDLE) {
+            cancelStreamingNotification()
+            return
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+        ) {
+            return
+        }
+
+        val text = when (state) {
+            DictationUiState.LISTENING -> "Streaming audio to Deepgram"
+            DictationUiState.FINALIZING -> "Finishing speech capture"
+            DictationUiState.IDLE -> return
+        }
+
+        val notification = NotificationCompat.Builder(this, STREAMING_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_app_icon)
+            .setContentTitle("LightIME dictation active")
+            .setContentText(text)
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+
+        NotificationManagerCompat.from(this).notify(STREAMING_NOTIFICATION_ID, notification)
+    }
+
+    private fun cancelStreamingNotification() {
+        NotificationManagerCompat.from(this).cancel(STREAMING_NOTIFICATION_ID)
+    }
+
     companion object {
         private const val BACKSPACE_INITIAL_REPEAT_DELAY_MS = 350L
         private const val BACKSPACE_REPEAT_INTERVAL_MS = 60L
         private const val DICTATION_FINALIZE_GRACE_MS = 1200L
+        private const val STREAMING_CHANNEL_ID = "lightime_dictation"
+        private const val STREAMING_NOTIFICATION_ID = 1001
     }
 
     private enum class InputMode {
@@ -837,5 +999,11 @@ class LightImeService : InputMethodService() {
         LOWER,
         UPPER,
         NUMERIC
+    }
+
+    private enum class DictationUiState {
+        IDLE,
+        LISTENING,
+        FINALIZING
     }
 }

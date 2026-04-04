@@ -17,17 +17,48 @@ class SettingsFragment : PreferenceFragmentCompat() {
         setPreferencesFromResource(R.xml.preferences, rootKey)
 
         val prefs = PreferenceManager.getDefaultSharedPreferences(requireContext())
-        // mirror compatibility with SettingsStore keys
-        findPreference<EditTextPreference>("dg_api_key")?.summaryProvider = EditTextPreference.SimpleSummaryProvider.getInstance()
-        findPreference<EditTextPreference>("dg_endpointing")?.summaryProvider = EditTextPreference.SimpleSummaryProvider.getInstance()
-        findPreference<EditTextPreference>("dg_language")?.summaryProvider = EditTextPreference.SimpleSummaryProvider.getInstance()
-        findPreference<ListPreference>("mic_hardware_key")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
-        findPreference<ListPreference>("keymap_backspace")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
-        findPreference<ListPreference>("keymap_enter")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
-        findPreference<ListPreference>("keymap_space")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
-        findPreference<ListPreference>("keymap_period")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
-        findPreference<ListPreference>("keymap_symbol")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
-        findPreference<ListPreference>("keymap_mode_cycle")?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        findPreference<EditTextPreference>("dg_api_key")?.summaryProvider = Preference.SummaryProvider<EditTextPreference> { pref ->
+            val value = pref.text.orEmpty().trim()
+            when {
+                value.isBlank() -> "Required for live dictation"
+                value.length <= 8 -> "Saved"
+                else -> "Saved (${value.take(4)}...${value.takeLast(4)})"
+            }
+        }
+        findPreference<EditTextPreference>("dg_endpointing")?.summaryProvider = Preference.SummaryProvider<EditTextPreference> { pref ->
+            val value = pref.text.orEmpty().trim().ifBlank { "300" }
+            "$value ms silence timeout"
+        }
+        findPreference<EditTextPreference>("dg_language")?.summaryProvider = Preference.SummaryProvider<EditTextPreference> { pref ->
+            pref.text.orEmpty().trim().ifBlank { "en-US" }
+        }
+        findPreference<EditTextPreference>("dg_keyterms")?.summaryProvider = Preference.SummaryProvider<EditTextPreference> { pref ->
+            val count = pref.text.orEmpty().lineSequence().map { it.trim() }.count { it.isNotEmpty() }
+            if (count == 0) "No boosted terms configured" else "$count boosted term${if (count == 1) "" else "s"}"
+        }
+        findPreference<EditTextPreference>("custom_dictionary_words")?.summaryProvider = Preference.SummaryProvider<EditTextPreference> { pref ->
+            val count = pref.text.orEmpty().lineSequence().map { it.trim() }.count { it.isNotEmpty() }
+            if (count == 0) "No custom T9 words" else "$count custom T9 word${if (count == 1) "" else "s"}"
+        }
+        findPreference<EditTextPreference>("text_corrections")?.summaryProvider = Preference.SummaryProvider<EditTextPreference> { pref ->
+            countTabMappings(pref.text.orEmpty(), "No phrase corrections", "phrase correction")
+        }
+        findPreference<EditTextPreference>("emoji_replacements")?.summaryProvider = Preference.SummaryProvider<EditTextPreference> { pref ->
+            countTabMappings(pref.text.orEmpty(), "No emoji replacements", "emoji replacement")
+        }
+
+        listOf(
+            "mic_hardware_key",
+            "keymap_backspace",
+            "keymap_enter",
+            "keymap_space",
+            "keymap_period",
+            "keymap_symbol",
+            "keymap_mode_cycle",
+            "spelling_mode"
+        ).forEach { key ->
+            findPreference<ListPreference>(key)?.summaryProvider = ListPreference.SimpleSummaryProvider.getInstance()
+        }
 
         findPreference<SwitchPreferenceCompat>("dg_stt_enabled")?.isChecked = prefs.getBoolean("dg_stt_enabled", true)
         findPreference<SwitchPreferenceCompat>("dg_interim")?.isChecked = prefs.getBoolean("dg_interim", true)
@@ -44,6 +75,17 @@ class SettingsFragment : PreferenceFragmentCompat() {
             val imm = requireContext().getSystemService(InputMethodManager::class.java)
             imm?.showInputMethodPicker()
             true
+        }
+    }
+
+    private fun countTabMappings(raw: String, emptyLabel: String, singularLabel: String): String {
+        val count = raw.lineSequence()
+            .map { it.trim() }
+            .count { line -> line.contains('\t') && line.substringBefore('\t').isNotBlank() }
+        return when (count) {
+            0 -> emptyLabel
+            1 -> "1 $singularLabel"
+            else -> "$count ${singularLabel}s"
         }
     }
 }

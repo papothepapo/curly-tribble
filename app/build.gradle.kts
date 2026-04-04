@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.example.lightime"
-    compileSdk = 34
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.example.lightime"

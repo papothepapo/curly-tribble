@@ -20,6 +20,9 @@ class T9Engine(private val db: SQLiteDatabase) {
         val out = ArrayList<String>(limit)
         val sql = """
             SELECT word FROM (
+                SELECT word, 2 AS boosted, 0 AS recent_score, 0 AS base_rank
+                FROM custom_words WHERE t9 LIKE ?
+                UNION ALL
                 SELECT word, boosted, recent_score, 999999 AS base_rank
                 FROM user_words WHERE t9 LIKE ?
                 UNION ALL
@@ -29,10 +32,14 @@ class T9Engine(private val db: SQLiteDatabase) {
             ORDER BY boosted DESC, recent_score DESC, base_rank ASC
             LIMIT ?
         """.trimIndent()
-        db.rawQuery(sql, arrayOf("$digits%", "$digits%", limit.toString())).use { c ->
+        db.rawQuery(sql, arrayOf("$digits%", "$digits%", "$digits%", limit.toString())).use { c ->
             while (c.moveToNext()) out.add(c.getString(0))
         }
         return out.distinct().take(limit).also { suggestionCache[cacheKey] = it }
+    }
+
+    fun invalidateCache() {
+        suggestionCache.clear()
     }
 
     fun digitsFor(word: String): String = DictionaryDbHelper.t9Of(word)

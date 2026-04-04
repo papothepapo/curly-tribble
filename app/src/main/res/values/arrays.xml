@@ -226,4 +226,18 @@
         <item>LP_VOLUME_UP</item>
         <item>LP_VOLUME_DOWN</item>
     </string-array>
+
+    <string-array name="spelling_mode_labels">
+        <item>Off</item>
+        <item>Auto join spelled letters</item>
+        <item>Explicit "spell ... end spell"</item>
+        <item>Auto + explicit</item>
+    </string-array>
+
+    <string-array name="spelling_mode_values">
+        <item>0</item>
+        <item>1</item>
+        <item>2</item>
+        <item>3</item>
+    </string-array>
 </resources>

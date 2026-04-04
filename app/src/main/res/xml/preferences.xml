@@ -1,10 +1,10 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto">
     <PreferenceCategory
-        android:title="Keyboard setup">
+        android:title="Setup">
         <Preference
             android:key="open_ime_settings"
-            android:title="Enable LightIME in Android Settings"
+            android:title="Enable LightIME in Android settings"
             android:summary="Opens Android's keyboard settings screen" />
         <Preference
             android:key="show_input_picker"
@@ -12,97 +12,126 @@
             android:summary="Shows the Android keyboard picker" />
     </PreferenceCategory>
 
-    <EditTextPreference
-        android:key="dg_api_key"
-        android:title="Deepgram API key"
-        app:useSimpleSummaryProvider="true" />
-    <SwitchPreferenceCompat
-        android:key="dg_stt_enabled"
-        android:defaultValue="true"
-        android:title="Enable speech-to-text" />
-    <EditTextPreference
-        android:key="dg_language"
-        android:defaultValue="en-US"
-        android:title="Language" />
-    <EditTextPreference
-        android:key="dg_endpointing"
-        android:defaultValue="300"
-        android:title="Endpointing (ms)" />
-    <SwitchPreferenceCompat
-        android:key="dg_interim"
-        android:defaultValue="true"
-        android:title="Live interim preview" />
-    <SwitchPreferenceCompat
-        android:key="auto_cap"
-        android:defaultValue="true"
-        android:title="Auto capitalization" />
-    <SwitchPreferenceCompat
-        android:key="t9_predictive"
-        android:defaultValue="true"
-        android:title="Predictive T9 suggestions" />
-    <SwitchPreferenceCompat
-        android:key="force_hide_onscreen_t9_keypad"
-        android:defaultValue="false"
-        android:title="Force hide on-screen T9 keypad"
-        android:summary="Hide the touch T9 keypad and action row even on touchscreen devices" />
-    <ListPreference
-        android:key="mic_hardware_key"
-        android:defaultValue="CALL"
-        android:entries="@array/hardware_key_labels_with_long_press"
-        android:entryValues="@array/hardware_key_values_with_long_press"
-        android:title="Mic hardware button" />
+    <PreferenceCategory
+        android:title="Typing">
+        <SwitchPreferenceCompat
+            android:key="t9_predictive"
+            android:defaultValue="true"
+            android:title="Use predictive T9 by default"
+            android:summary="If off, the keyboard starts in letter mode instead." />
+        <SwitchPreferenceCompat
+            android:key="auto_cap"
+            android:defaultValue="true"
+            android:title="Auto capitalization"
+            android:summary="Starts non-T9 fields in uppercase when the target field requests sentence caps." />
+        <SwitchPreferenceCompat
+            android:key="force_hide_onscreen_t9_keypad"
+            android:defaultValue="false"
+            android:title="Hide touch keypad"
+            android:summary="Show only the suggestion and status strip even on touchscreen devices." />
+        <EditTextPreference
+            android:key="custom_dictionary_words"
+            android:title="Custom T9 words"
+            android:summary="One word per line"
+            android:dialogMessage="Add one custom word per line." />
+    </PreferenceCategory>
 
     <PreferenceCategory
-        android:title="Hardware keypad mapping">
+        android:title="Buttons">
         <ListPreference
-            android:key="keymap_backspace"
-            android:defaultValue="DEL"
+            android:key="mic_hardware_key"
+            android:defaultValue="CALL"
             android:entries="@array/hardware_key_labels_with_long_press"
             android:entryValues="@array/hardware_key_values_with_long_press"
-            android:title="Backspace action key" />
-        <ListPreference
-            android:key="keymap_enter"
-            android:defaultValue="ENTER"
-            android:entries="@array/hardware_key_labels_with_long_press"
-            android:entryValues="@array/hardware_key_values_with_long_press"
-            android:title="Enter action key" />
-        <ListPreference
-            android:key="keymap_space"
-            android:defaultValue="KEY_0"
-            android:entries="@array/hardware_key_labels_with_long_press"
-            android:entryValues="@array/hardware_key_values_with_long_press"
-            android:title="Space / commit action key" />
-        <ListPreference
-            android:key="keymap_period"
-            android:defaultValue="KEY_1"
-            android:entries="@array/hardware_key_labels_with_long_press"
-            android:entryValues="@array/hardware_key_values_with_long_press"
-            android:title="Period action key" />
-        <ListPreference
-            android:key="keymap_symbol"
-            android:defaultValue="STAR"
-            android:entries="@array/hardware_key_labels_with_long_press"
-            android:entryValues="@array/hardware_key_values_with_long_press"
-            android:title="Comma/symbol action key" />
+            android:title="Mic / dictation button"
+            android:summary="Choose the button that starts and stops live dictation." />
         <ListPreference
             android:key="keymap_mode_cycle"
             android:defaultValue="LP_STAR"
             android:entries="@array/hardware_key_labels_with_long_press"
             android:entryValues="@array/hardware_key_values_with_long_press"
-            android:title="Mode cycle key (T9/ABC/abc/123)" />
+            android:title="Mode cycle button"
+            android:summary="Cycles T9, ABC, abc, and 123." />
+        <ListPreference
+            android:key="keymap_backspace"
+            android:defaultValue="DEL"
+            android:entries="@array/hardware_key_labels_with_long_press"
+            android:entryValues="@array/hardware_key_values_with_long_press"
+            android:title="Backspace button" />
+        <ListPreference
+            android:key="keymap_enter"
+            android:defaultValue="ENTER"
+            android:entries="@array/hardware_key_labels_with_long_press"
+            android:entryValues="@array/hardware_key_values_with_long_press"
+            android:title="Enter button" />
+        <ListPreference
+            android:key="keymap_space"
+            android:defaultValue="KEY_0"
+            android:entries="@array/hardware_key_labels_with_long_press"
+            android:entryValues="@array/hardware_key_values_with_long_press"
+            android:title="Space / commit button" />
+        <ListPreference
+            android:key="keymap_period"
+            android:defaultValue="KEY_1"
+            android:entries="@array/hardware_key_labels_with_long_press"
+            android:entryValues="@array/hardware_key_values_with_long_press"
+            android:title="Period button" />
+        <ListPreference
+            android:key="keymap_symbol"
+            android:defaultValue="STAR"
+            android:entries="@array/hardware_key_labels_with_long_press"
+            android:entryValues="@array/hardware_key_values_with_long_press"
+            android:title="Comma / symbol button" />
     </PreferenceCategory>
-    <EditTextPreference
-        android:key="dg_keyterms"
-        android:title="Deepgram keyterms (newline separated)"
-        android:dialogMessage="One phrase per line" />
-    <EditTextPreference
-        android:key="text_corrections"
-        android:title="Corrections (phrase&lt;TAB&gt;replacement per line)" />
-    <EditTextPreference
-        android:key="emoji_replacements"
-        android:title="Emoji replacements (phrase&lt;TAB&gt;emoji per line)" />
-    <EditTextPreference
-        android:key="spelling_mode"
-        android:defaultValue="1"
-        android:title="Spelling mode: 0 off, 1 auto, 2 explicit, 3 both" />
+
+    <PreferenceCategory
+        android:title="Dictation">
+        <SwitchPreferenceCompat
+            android:key="dg_stt_enabled"
+            android:defaultValue="true"
+            android:title="Enable speech-to-text"
+            android:summary="Shows the mic button and allows audio streaming to Deepgram." />
+        <EditTextPreference
+            android:key="dg_api_key"
+            android:title="Deepgram API key" />
+        <EditTextPreference
+            android:key="dg_language"
+            android:defaultValue="en-US"
+            android:title="Recognition language"
+            android:summary="Deepgram locale, for example en-US." />
+        <EditTextPreference
+            android:key="dg_endpointing"
+            android:defaultValue="300"
+            android:title="Silence timeout"
+            android:summary="How long Deepgram waits before finalizing speech." />
+        <SwitchPreferenceCompat
+            android:key="dg_interim"
+            android:defaultValue="true"
+            android:title="Show live preview"
+            android:summary="Displays interim dictation text before the final result arrives." />
+        <EditTextPreference
+            android:key="dg_keyterms"
+            android:title="Boosted keyterms"
+            android:summary="One phrase per line"
+            android:dialogMessage="One phrase per line" />
+    </PreferenceCategory>
+
+    <PreferenceCategory
+        android:title="Text Cleanup">
+        <ListPreference
+            android:key="spelling_mode"
+            android:defaultValue="1"
+            android:entries="@array/spelling_mode_labels"
+            android:entryValues="@array/spelling_mode_values"
+            android:title="Spelling mode"
+            android:summary="How spoken letter-by-letter dictation is normalized." />
+        <EditTextPreference
+            android:key="text_corrections"
+            android:title="Phrase corrections"
+            android:summary="Use phrase&lt;TAB&gt;replacement per line." />
+        <EditTextPreference
+            android:key="emoji_replacements"
+            android:title="Emoji replacements"
+            android:summary="Use phrase&lt;TAB&gt;emoji per line." />
+    </PreferenceCategory>
 </PreferenceScreen>
